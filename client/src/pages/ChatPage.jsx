@@ -14,6 +14,16 @@ import { useWebRTC } from '../hooks/useWebRTC';
 import { encryptPayload, decryptPayload } from '../utils/cryptoUtils';
 
 /* ─────────────────────────────────────────
+   QUICK AI PROMPTS
+───────────────────────────────────────── */
+const quickAiPrompts = [
+  { label: 'Recommend a Movie', prompt: 'Recommend a movie for date night', icon: Film },
+  { label: 'Explain Movie Ending', prompt: 'Explain the ending of Interstellar', icon: HelpCircle },
+  { label: 'Movie Trivia', prompt: 'Give me fun trivia about Inception', icon: Sparkles },
+  { label: 'Cinema Quiz Game', prompt: "Let's play a movie guessing quiz game", icon: Dices }
+];
+
+/* ─────────────────────────────────────────
    INCOMING CALL BANNER
 ───────────────────────────────────────── */
 function IncomingCallBanner({ partnerName, onAccept, onDecline, isVideoCall }) {
