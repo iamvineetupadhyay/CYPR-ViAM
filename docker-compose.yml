@@ -1,0 +1,20 @@
+services:
+  cypr-moviehub:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cypr-moviehub
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - JWT_SECRET=cypr_super_secret_jwt_key_2026
+      - RESEND_API_KEY=${RESEND_API_KEY}
+    volumes:
+      - cypr_sqlite_data:/app/server/data
+
+volumes:
+  cypr_sqlite_data:
+    driver: local

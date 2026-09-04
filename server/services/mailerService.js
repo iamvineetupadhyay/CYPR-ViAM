@@ -1,0 +1,128 @@
+require('dotenv').config();
+const nodemailer = require('nodemailer');
+
+let mailTransporter = null;
+
+async function initMailer() {
+  if (process.env.SMTP_HOST && process.env.SMTP_USER) {
+    mailTransporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT) || 587,
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
+      }
+    });
+    console.log(`📧 [CYPR Mailer] Configured custom SMTP server for ${process.env.SMTP_USER}`);
+  } else {
+    try {
+      const testAccount = await nodemailer.createTestAccount();
+      mailTransporter = nodemailer.createTransport({
+        host: 'smtp.ethereal.email',
+        port: 587,
+        secure: false,
+        auth: {
+          user: testAccount.user,
+          pass: testAccount.pass
+        }
+      });
+      console.log(`📧 [CYPR Mailer] Initialized Ethereal Mailer (${testAccount.user})`);
+    } catch (err) {
+      console.warn('⚠️ Could not initialize Ethereal mailer, fallback to console log mode:', err.message);
+    }
+  }
+}
+
+/**
+ * Send OTP via Resend API or SMTP
+ */
+async function sendEmailOtp(toEmail, otpCode) {
+  const htmlContent = `
+    <div style="background-color: #0b0806; color: #ffffff; padding: 40px 20px; font-family: 'Plus Jakarta Sans', Arial, sans-serif; text-align: center; border-radius: 20px;">
+      <div style="margin-bottom: 24px;">
+        <h1 style="font-size: 28px; font-weight: 900; color: #ffffff; margin: 0;">❤️ CYPR <span style="color: #ff5500;">ViAM</span></h1>
+        <p style="font-size: 13px; color: #94a3b8; margin-top: 4px;">Synchronized Co-Watching Lounge for Couples</p>
+      </div>
+
+      <div style="background: rgba(255,255,255,0.04); border: 1.5px solid rgba(255,85,0,0.4); border-radius: 24px; padding: 32px; max-width: 440px; margin: 0 auto; box-shadow: 0 10px 40px rgba(0,0,0,0.8);">
+        <h2 style="font-size: 20px; font-weight: 800; color: #ffffff; margin-bottom: 8px;">Verify Your Email Address</h2>
+        <p style="font-size: 14px; color: #cbd5e1; margin-bottom: 24px; line-height: 1.5;">Enter the following 6-digit One-Time Password (OTP) to complete your account setup:</p>
+        
+        <div style="background: #120e0b; border: 2px solid #ff5500; border-radius: 16px; padding: 18px; display: inline-block; width: 80%; margin-bottom: 24px; box-shadow: 0 0 25px rgba(255,85,0,0.4);">
+          <span style="font-size: 36px; font-weight: 900; letter-spacing: 10px; color: #ff5500; font-family: monospace;">${otpCode}</span>
+        </div>
+
+        <p style="font-size: 12px; color: #94a3b8; margin: 0;">This OTP code is valid for <strong>10 minutes</strong>. Do not share this code with anyone.</p>
+      </div>
+
+      <div style="margin-top: 32px; font-size: 12px; color: #64748b;">
+        <p>© 2026 CYPR ViAM Inc. • AES-256 E2EE Cryptography Engine</p>
+      </div>
+    </div>
+  `;
+
+  // 1. Try Resend API first if key is configured
+  if (process.env.RESEND_API_KEY) {
+    try {
+      const fromAddress = process.env.RESEND_FROM || 'CYPR ViAM <onboarding@resend.dev>';
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.RESEND_API_KEY.trim()}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: fromAddress,
+          to: [toEmail],
+          subject: `🔒 Your CYPR ViAM OTP Code: ${otpCode}`,
+          html: htmlContent
+        })
+      });
+
+      const resData = await res.json();
+      if (res.ok && resData && resData.id) {
+        console.log(`🚀 [CYPR Mailer via Resend] Successfully delivered OTP email to ${toEmail} (ID: ${resData.id})`);
+        return { success: true, id: resData.id, provider: 'resend' };
+      } else {
+        console.warn(`⚠️ [Resend API Notice]:`, resData?.message || resData);
+      }
+    } catch (resendErr) {
+      console.warn(`⚠️ [Resend Error]: ${resendErr.message}`);
+    }
+  }
+
+  // 2. Fallback to Nodemailer / Ethereal
+  if (!mailTransporter) {
+    await initMailer();
+  }
+
+  if (mailTransporter) {
+    try {
+      const mailOptions = {
+        from: `"CYPR ViAM Private Lounge" <${process.env.SMTP_FROM || 'no-reply@cypr.com'}>`,
+        to: toEmail,
+        subject: `🔒 Your CYPR ViAM OTP Code: ${otpCode}`,
+        html: htmlContent
+      };
+
+      const info = await mailTransporter.sendMail(mailOptions);
+      console.log(`📧 [CYPR Mailer] OTP Email sent to ${toEmail} (MsgID: ${info.messageId})`);
+      const previewUrl = nodemailer.getTestMessageUrl(info);
+      if (previewUrl) {
+        console.log(`🔗 [CYPR Mailer Preview] Direct Email View URL: ${previewUrl}`);
+      }
+      return { info, previewUrl, provider: 'nodemailer' };
+    } catch (smtpErr) {
+      console.error(`❌ [SMTP Error]:`, smtpErr.message);
+    }
+  }
+
+  return null;
+}
+
+initMailer();
+
+module.exports = {
+  sendEmailOtp
+};
