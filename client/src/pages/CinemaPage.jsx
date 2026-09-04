@@ -15,10 +15,7 @@ import HeaderProfileMenu from '../components/HeaderProfileMenu';
 import AiCinemaCompanion from '../components/AiCinemaCompanion';
 import { useWebRTC } from '../hooks/useWebRTC';
 import { encryptPayload, decryptPayload } from '../utils/cryptoUtils';
-
-const SERVER_URL = window.location.hostname === 'localhost'
-  ? 'http://localhost:4000'
-  : `${window.location.protocol}//${window.location.hostname}:4000`;
+import { SERVER_URL } from '../utils/apiUrl';
 
 export default function CinemaPage({
   currentUser,

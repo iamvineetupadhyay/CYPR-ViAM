@@ -6,10 +6,7 @@ import {
   RefreshCw, LogOut
 } from "lucide-react";
 import HeaderProfileMenu from "../components/HeaderProfileMenu";
-
-const SERVER_URL = window.location.hostname === "localhost"
-  ? "http://localhost:4000"
-  : window.location.protocol + "//" + window.location.hostname + ":4000";
+import { SERVER_URL } from "../utils/apiUrl";
 
 const AVATAR_PRESETS = [
   "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",

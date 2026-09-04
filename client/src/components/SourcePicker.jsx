@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Film, Video, Globe, HardDrive, X, Play, Star, Clock, Sparkles, ExternalLink, RefreshCw } from 'lucide-react';
 import { CURATED_COUPLE_PICKS, HDHUB4U_TOP_PICKS, detectSourceType } from '../utils/movieSources';
-
-const SERVER_URL = window.location.hostname === 'localhost'
-  ? 'http://localhost:4000'
-  : `${window.location.protocol}//${window.location.hostname}:4000`;
+import { SERVER_URL } from '../utils/apiUrl';
 
 export default function SourcePicker({ isOpen, onClose, onSelectMedia, initialQuery = '' }) {
   const [activeTab, setActiveTab] = useState('search'); // 'search' | 'local' | 'custom'
