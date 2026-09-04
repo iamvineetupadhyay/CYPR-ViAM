@@ -18,6 +18,9 @@ const registerChatHandlers = require('./sockets/chatHandler');
 
 const app = express();
 
+// Trust reverse proxy for Render / load balancers
+app.set('trust proxy', 1);
+
 // Security Hardening: Helmet Headers & CSP
 app.use(helmet({
   contentSecurityPolicy: false, // Disabled for flexible cross-origin media embedding
