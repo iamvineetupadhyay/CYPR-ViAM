@@ -7,6 +7,7 @@ import CinemaPage from './pages/CinemaPage';
 import ProfilePage from './pages/ProfilePage';
 import CallPage from './pages/CallPage';
 import AiPage from './pages/AiPage';
+import RoomsPage from './pages/RoomsPage';
 import FloatingCallWindow from './components/FloatingCallWindow';
 import GlobalIncomingCallModal from './components/GlobalIncomingCallModal';
 import RoomPasscodeModal from './components/RoomPasscodeModal';
@@ -283,6 +284,19 @@ export default function App() {
       setIncomingCall(null);
     });
 
+    // Forced kick from Host
+    newSocket.on('kicked-from-room', ({ roomId, message }) => {
+      sessionStorage.removeItem('cypr_active_room');
+      sessionStorage.removeItem('cypr_active_page');
+      if (roomId) sessionStorage.removeItem(`cypr_passcode_${roomId}`);
+      alert(`⛔ ${message || 'You have been kicked from the lounge by the Host.'}`);
+      setPage('connect');
+      setRoomId('');
+      setCurrentUser(null);
+      setRoomUsers([]);
+      window.history.pushState({}, '', window.location.pathname);
+    });
+
     return () => newSocket.disconnect();
   }, []);
 
@@ -431,9 +445,24 @@ export default function App() {
           onOpenCinema={() => setPage('cinema')}
           onOpenChat={() => setPage('chat')}
           onOpenAI={() => setPage('ai')}
+          onOpenRooms={() => setPage('rooms')}
           onOpenCall={handleOpenCall}
           onOpenProfile={() => setPage('profile')}
           onLeave={handleLeave}
+        />
+      )}
+
+      {page === 'rooms' && (
+        <RoomsPage
+          {...sharedProps}
+          onBack={() => setPage(roomId ? 'home' : 'connect')}
+          onRejoinRoom={(code) => handleConnect({ name: currentUser?.name || 'User', roomId: code })}
+          onOpenCreateRoom={() => {
+            handleLeave();
+            setPage('connect');
+          }}
+          onOpenProfile={() => setPage('profile')}
+          onLogout={handleLeave}
         />
       )}
 
@@ -442,6 +471,7 @@ export default function App() {
           userAccount={currentUser}
           onBack={() => setPage(currentUser ? 'home' : 'connect')}
           onLogout={handleLeave}
+          onOpenRooms={() => setPage('rooms')}
           onRejoinRoom={(code) => handleConnect({ name: currentUser?.name || 'User', roomId: code })}
           onPlayShow={() => setPage('cinema')}
           theme={theme}
@@ -456,6 +486,7 @@ export default function App() {
           onBack={() => setPage('home')}
           onOpenChat={() => setPage('chat')}
           onOpenAI={() => setPage('ai')}
+          onOpenRooms={() => setPage('rooms')}
           onMediaChange={setMediaState}
           onOpenProfile={() => setPage('profile')}
         />
@@ -469,6 +500,7 @@ export default function App() {
           onOpenHome={() => setPage('home')}
           onOpenCinema={() => setPage('cinema')}
           onOpenChat={() => setPage('chat')}
+          onOpenRooms={() => setPage('rooms')}
           onOpenProfile={() => setPage('profile')}
           onLeave={handleLeave}
         />
@@ -498,6 +530,7 @@ export default function App() {
           onOpenHome={() => setPage('home')}
           onOpenCinema={() => setPage('cinema')}
           onOpenAI={() => setPage('ai')}
+          onOpenRooms={() => setPage('rooms')}
           onOpenProfile={() => setPage('profile')}
           onOpenCall={handleOpenCall}
           onLeave={handleLeave}

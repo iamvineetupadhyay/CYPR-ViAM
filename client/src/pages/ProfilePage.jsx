@@ -23,7 +23,7 @@ const AVATAR_PRESETS = [
 
 const GENRE_OPTIONS = ["Action", "Sci-Fi", "Romance", "Horror", "Comedy", "Thriller", "Anime", "Drama", "Documentary", "Fantasy"];
 
-export default function ProfilePage({ userAccount, onBack, onRejoinRoom, onPlayShow, onLogout, onGlobalVoiceAction, theme = 'dark' }) {
+export default function ProfilePage({ userAccount, onBack, onRejoinRoom, onPlayShow, onOpenRooms, onLogout, onGlobalVoiceAction, theme = 'dark' }) {
   const T = getT(theme);
 
   const inp = {
@@ -203,7 +203,14 @@ export default function ProfilePage({ userAccount, onBack, onRejoinRoom, onPlayS
         {saveMsg && <div style={{ fontSize: "12px", fontWeight: "600", padding: "6px 14px", borderRadius: "8px", background: saveMsg.includes("saved") || saveMsg.includes("Profile") ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)", color: saveMsg.includes("saved") || saveMsg.includes("Profile") ? "#22c55e" : "#ef4444", border: "1px solid rgba(34,197,94,0.3)" }}>{saveMsg}</div>}
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <VoiceAssistant onGlobalVoiceAction={onGlobalVoiceAction} theme={theme} showLabel={false} />
-          <HeaderProfileMenu userAccount={user} onOpenProfile={() => setActiveTab("profile")} onOpenHistory={() => setActiveTab("shows")} onLogout={onLogout} theme={theme} />
+          <HeaderProfileMenu
+            userAccount={user}
+            onOpenProfile={() => setActiveTab("profile")}
+            onOpenHistory={() => setActiveTab("shows")}
+            onOpenRooms={onOpenRooms}
+            onLogout={onLogout}
+            theme={theme}
+          />
         </div>
       </header>
 
@@ -321,6 +328,53 @@ export default function ProfilePage({ userAccount, onBack, onRejoinRoom, onPlayS
                   <button onClick={clearHistory} style={{ background: "transparent", border: "none", color: T.textMuted2, fontSize: "12px", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }} onMouseEnter={e => e.currentTarget.style.color = "#ef4444"} onMouseLeave={e => e.currentTarget.style.color = T.textMuted2}><Trash2 size={13} /> Clear</button>
                 </div>
               </div>
+
+              {/* Dedicated Rooms & Members Manager Banner */}
+              {onOpenRooms && (
+                <div
+                  style={{
+                    background: "linear-gradient(135deg, rgba(255,85,0,0.12) 0%, rgba(255,136,68,0.06) 100%)",
+                    border: "1px solid rgba(255,85,0,0.3)",
+                    borderRadius: "14px",
+                    padding: "16px 20px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "16px"
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: "14px", fontWeight: "700", color: T.textPrimary, display: "flex", alignItems: "center", gap: "8px" }}>
+                      <Sparkles size={16} color="#ff5500" />
+                      <span>Dedicated Lounges & Member Manager</span>
+                    </div>
+                    <div style={{ fontSize: "12px", color: T.textMuted1, marginTop: "4px", lineHeight: 1.4 }}>
+                      Manage active online members, throw/kick users as Host, view real-time audit timelines with timestamps, and monitor all active rooms.
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={onOpenRooms}
+                    style={{
+                      background: "#ff5500",
+                      border: "none",
+                      color: "#fff",
+                      padding: "8px 16px",
+                      borderRadius: "8px",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      whiteSpace: "nowrap"
+                    }}
+                  >
+                    <span>Open Rooms Page</span>
+                    <ArrowRight size={13} />
+                  </button>
+                </div>
+              )}
               {historyLoading ? <div style={{ textAlign: "center", padding: "40px", color: T.textMuted2 }}>Loading...</div>
                : roomHistory.length > 0 ? roomHistory.map((room, idx) => (
                 <div key={room.id || idx} style={{ padding: "14px 18px", borderRadius: "12px", background: T.profileSubcardBg, border: `1px solid ${T.border1}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>

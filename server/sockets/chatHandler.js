@@ -123,6 +123,19 @@ async function resolveMovieForPlay(queryOrUrl) {
 }
 
 function registerChatHandlers(io, socket, state) {
+  // Fetch Persistent Room Chat History on demand
+  socket.on('get-chat-history', ({ roomId }) => {
+    const cleanRoomId = (roomId || state.currentRoom || '').toLowerCase().trim();
+    if (!cleanRoomId) return;
+    const room = RoomStore.getRoom(cleanRoomId);
+    let messages = room?.messages;
+    if (!messages || messages.length === 0) {
+      messages = DBService.getRoomMessages(cleanRoomId) || [];
+      if (room) room.messages = messages;
+    }
+    socket.emit('initial-chat-history', messages || []);
+  });
+
   // Text message (Group or Direct 1-on-1)
   socket.on('chat-message', async (msg) => {
     if (!state.currentRoom) return;

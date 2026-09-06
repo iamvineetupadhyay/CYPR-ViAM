@@ -52,7 +52,18 @@ class RoomStore {
         waitingUsers: new Map(),
         approvedMembers: initialApproved,
         messages: savedMessages,
+        activityLogs: [
+          {
+            id: 'act_' + Date.now(),
+            type: 'create',
+            userName: hostUser?.name || 'Host',
+            userEmail: hostUser?.email || '',
+            avatar: hostUser?.avatar || '',
+            timestamp: Date.now()
+          }
+        ],
         mediaState: { ...DEFAULT_MEDIA_STATE, updatedAt: Date.now() },
+        createdAt: Date.now(),
         cleanupTimer: null
       });
       console.log(`🔒 [Room Created] Room "${cleanId}" (Messages loaded: ${savedMessages.length}, Host: ${hostUser?.name || 'Guest'})`);
@@ -61,12 +72,16 @@ class RoomStore {
       if (!room.messages || room.messages.length === 0) {
         room.messages = DBService.getRoomMessages(cleanId) || [];
       }
+      if (!room.activityLogs) {
+        room.activityLogs = [];
+      }
       if (passcode && !room.passcode) {
         room.passcode = String(passcode).trim();
       }
       if (room.cleanupTimer) {
         clearTimeout(room.cleanupTimer);
         room.cleanupTimer = null;
+        console.log(`⏱️ [Cleanup Cancelled] Room "${cleanId}" active, 2-hour inactivity timer cancelled.`);
       }
     }
 
@@ -143,18 +158,90 @@ class RoomStore {
       console.log(`👑 [Host Shifted] New host for "${cleanId}" is ${nextUser?.name}`);
     }
 
-    // Schedule cleanup if room is empty
+    // Schedule cleanup if room is empty (2 hours inactivity)
     if (room.users.size === 0) {
       if (room.cleanupTimer) clearTimeout(room.cleanupTimer);
       room.cleanupTimer = setTimeout(() => {
         if (roomsDB.has(cleanId) && roomsDB.get(cleanId).users.size === 0) {
           roomsDB.delete(cleanId);
-          console.log(`🧹 [Room Cleaned] Closed empty room "${cleanId}" after inactivity.`);
+          try {
+            DBService.deleteRoomMessages(cleanId);
+          } catch (err) {
+            console.warn(`[Room Purge Messages Error for ${cleanId}]:`, err.message);
+          }
+          console.log(`🧹 [Room Cleaned & Purged] Closed empty room "${cleanId}" and purged chat history after 2 hours of inactivity.`);
         }
       }, ROOM_CLEANUP_INACTIVITY_MS);
     }
 
     return user;
+  }
+
+  static logActivity(roomId, event) {
+    const cleanId = (roomId || '').toLowerCase().trim();
+    const room = roomsDB.get(cleanId);
+    if (!room) return null;
+    if (!room.activityLogs) room.activityLogs = [];
+    const logItem = {
+      id: 'act_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+      type: event.type || 'info', // 'create' | 'join' | 'leave' | 'kicked'
+      userName: event.userName || 'Member',
+      userEmail: event.userEmail || '',
+      avatar: event.avatar || '',
+      by: event.by || null,
+      timestamp: event.timestamp || Date.now()
+    };
+    room.activityLogs.unshift(logItem);
+    if (room.activityLogs.length > 100) room.activityLogs.pop();
+    return logItem;
+  }
+
+  static getRoomDetails(roomId) {
+    const cleanId = (roomId || '').toLowerCase().trim();
+    const room = roomsDB.get(cleanId);
+    if (!room) return null;
+    return {
+      roomId: room.roomId,
+      hostSocketId: room.hostSocketId,
+      hostUser: room.hostUser,
+      originalHostName: room.originalHostName,
+      isPublic: room.isPublic,
+      hasPasscode: !!room.passcode,
+      maxCapacity: room.maxCapacity,
+      onlineUsers: Array.from(room.users.values()),
+      waitingCount: room.waitingUsers?.size || 0,
+      activityLogs: room.activityLogs || [],
+      messageCount: room.messages?.length || 0,
+      createdAt: room.createdAt || null,
+      cleanupTimerActive: !!room.cleanupTimer
+    };
+  }
+
+  static getUserRoomsSummary(userEmail) {
+    const cleanEmail = (userEmail || '').toLowerCase().trim();
+    const activeRooms = [];
+    for (const [id, room] of roomsDB.entries()) {
+      const isHost = (room.hostUser?.email && room.hostUser.email.toLowerCase() === cleanEmail) ||
+                     (room.originalHostEmail && room.originalHostEmail.toLowerCase() === cleanEmail);
+      const isMember = Array.from(room.users.values()).some(u => (u.email && u.email.toLowerCase() === cleanEmail));
+      const isApproved = room.approvedMembers && (room.approvedMembers.has(cleanEmail));
+      
+      activeRooms.push({
+        roomId: room.roomId,
+        isHost: !!isHost,
+        isMember: !!isMember,
+        isApproved: !!isApproved,
+        onlineCount: room.users.size,
+        maxCapacity: room.maxCapacity,
+        hasPasscode: !!room.passcode,
+        isPublic: room.isPublic,
+        hostName: room.hostUser?.name || room.originalHostName || 'Host',
+        messageCount: room.messages?.length || 0,
+        createdAt: room.createdAt || null,
+        status: room.users.size > 0 ? 'active' : 'idle'
+      });
+    }
+    return activeRooms;
   }
 
   static verifyPasscode(roomId, providedPasscode) {

@@ -139,6 +139,14 @@ function registerRoomHandlers(io, socket, state) {
       }
 
       if (user) {
+        RoomStore.logActivity(cleanRoomId, {
+          type: 'leave',
+          userName: user.name,
+          userEmail: user.email,
+          avatar: user.avatar,
+          timestamp: Date.now()
+        });
+
         socket.to(cleanRoomId).emit('user-left', {
           socketId: socket.id,
           userName: user.name
@@ -152,8 +160,106 @@ function registerRoomHandlers(io, socket, state) {
         maxCapacity: room.maxCapacity,
         isPublic: room.isPublic
       });
+
+      io.to(cleanRoomId).emit('room-activity-update', {
+        activities: room.activityLogs || []
+      });
       console.log(`👋 [User Left] ${user?.name || socket.id} left room ${cleanRoomId}`);
     }
+  });
+
+  // Host Kicks / Throws User Out of Room
+  socket.on('kick-user', ({ roomId, targetSocketId, targetUserName }) => {
+    const cleanRoomId = (roomId || state.currentRoom || '').toLowerCase().trim();
+    const room = RoomStore.getRoom(cleanRoomId);
+    if (!room) return;
+
+    const isHost = room.hostSocketId === socket.id ||
+                   (room.originalHostName && room.originalHostName === state.currentUser?.name) ||
+                   (room.originalHostEmail && room.originalHostEmail === state.currentUser?.email);
+
+    if (!isHost) {
+      return socket.emit('room-error', { code: 'UNAUTHORIZED', message: 'Only the Room Host can throw/kick users.' });
+    }
+
+    const targetSocket = targetSocketId ? io.sockets.sockets.get(targetSocketId) : null;
+    const targetUser = targetSocketId ? room.users.get(targetSocketId) : null;
+    const kickedName = targetUser?.name || targetUserName || 'Member';
+
+    if (targetSocketId) {
+      RoomStore.removeUserFromRoom(cleanRoomId, targetSocketId);
+      if (targetSocket) {
+        targetSocket.leave(cleanRoomId);
+        targetSocket.emit('kicked-from-room', {
+          roomId: cleanRoomId,
+          message: `You were removed from the lounge by Host "${state.currentUser?.name || 'Host'}".`
+        });
+      }
+    }
+
+    // Revoke approval cache for kicked user
+    if (targetUser && room.approvedMembers) {
+      if (targetUser.email) room.approvedMembers.delete(targetUser.email.toLowerCase().trim());
+      if (targetUser.name) room.approvedMembers.delete(targetUser.name.toLowerCase().trim());
+    }
+
+    // Log kick activity
+    RoomStore.logActivity(cleanRoomId, {
+      type: 'kicked',
+      userName: kickedName,
+      userEmail: targetUser?.email || '',
+      avatar: targetUser?.avatar || '',
+      by: state.currentUser?.name || 'Host',
+      timestamp: Date.now()
+    });
+
+    // Broadcast user update & activity update
+    const userList = Array.from(room.users.values());
+    io.to(cleanRoomId).emit('room-users-update', {
+      users: userList,
+      hostSocketId: room.hostSocketId,
+      maxCapacity: room.maxCapacity,
+      isPublic: room.isPublic
+    });
+
+    io.to(cleanRoomId).emit('room-activity-update', {
+      activities: room.activityLogs || []
+    });
+
+    // Announce kick in chat
+    const kickNotice = {
+      id: 'sys_' + Date.now(),
+      text: `⚠️ **${kickedName}** was kicked from the lounge by Host **${state.currentUser?.name || 'Host'}**.`,
+      senderId: 'system',
+      senderName: 'CYPR ViAM System',
+      timestamp: Date.now(),
+      isAI: false,
+      target: 'group',
+      chatId: 'group'
+    };
+    io.to(cleanRoomId).emit('chat-message-received', kickNotice);
+    RoomStore.addMessage(cleanRoomId, kickNotice);
+    console.log(`⛔ [User Kicked] ${kickedName} kicked from ${cleanRoomId} by ${state.currentUser?.name}`);
+  });
+
+  // Query Room Details & Member Logs (for RoomsPage)
+  socket.on('get-room-details', ({ roomId }) => {
+    const targetRoomId = (roomId || state.currentRoom || '').toLowerCase().trim();
+    const details = RoomStore.getRoomDetails(targetRoomId);
+    if (details) {
+      socket.emit('room-details-response', details);
+    }
+  });
+
+  // Query All User Rooms (Active & Past History for RoomsPage)
+  socket.on('get-my-rooms', ({ userEmail }) => {
+    const cleanEmail = (userEmail || state.currentUser?.email || '').toLowerCase().trim();
+    const activeRooms = RoomStore.getUserRoomsSummary(cleanEmail);
+    const dbHistory = cleanEmail ? (DBService.getRoomHistory(cleanEmail, 30) || []) : [];
+    socket.emit('my-rooms-response', {
+      activeRooms,
+      pastHistory: dbHistory
+    });
   });
 
   // Disconnection handler
@@ -163,6 +269,14 @@ function registerRoomHandlers(io, socket, state) {
       const user = RoomStore.removeUserFromRoom(state.currentRoom, socket.id);
       
       if (user && room) {
+        RoomStore.logActivity(state.currentRoom, {
+          type: 'leave',
+          userName: user.name,
+          userEmail: user.email,
+          avatar: user.avatar,
+          timestamp: Date.now()
+        });
+
         socket.to(state.currentRoom).emit('user-left', {
           socketId: socket.id,
           userName: user.name
@@ -175,6 +289,10 @@ function registerRoomHandlers(io, socket, state) {
           hostSocketId: room.hostSocketId,
           maxCapacity: room.maxCapacity,
           isPublic: room.isPublic
+        });
+
+        io.to(state.currentRoom).emit('room-activity-update', {
+          activities: room.activityLogs || []
         });
       }
     }
@@ -208,6 +326,33 @@ function completeUserJoin(io, socket, room, user) {
     isPublic: room.isPublic
   });
 
+  if (room.cleanupTimer) {
+    clearTimeout(room.cleanupTimer);
+    room.cleanupTimer = null;
+    console.log(`⏱️ [Cleanup Cancelled] User "${user.name}" joined "${room.roomId}", 2-hour inactivity timer cancelled.`);
+  }
+
+  RoomStore.logActivity(room.roomId, {
+    type: 'join',
+    userName: user.name,
+    userEmail: user.email,
+    avatar: user.avatar,
+    timestamp: Date.now()
+  });
+
+  if (user.email) {
+    try {
+      const DBService = require('../services/dbService');
+      DBService.addRoomHistory({
+        userEmail: user.email,
+        roomId: room.roomId,
+        isHost: room.hostSocketId === socket.id
+      });
+    } catch (e) {
+      console.warn('[DB Add Room History Error]', e.message);
+    }
+  }
+
   // Notify all users in the room about current participants and capacity
   const userList = Array.from(room.users.values());
   io.to(room.roomId).emit('room-users-update', {
@@ -216,6 +361,10 @@ function completeUserJoin(io, socket, room, user) {
     hostSocketId: room.hostSocketId,
     maxCapacity: room.maxCapacity,
     isPublic: room.isPublic
+  });
+
+  io.to(room.roomId).emit('room-activity-update', {
+    activities: room.activityLogs || []
   });
 
   // Send current media state and chat history to the newly joined/reconnected peer

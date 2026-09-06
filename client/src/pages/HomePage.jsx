@@ -19,6 +19,7 @@ export default function HomePage({
   onOpenCinema,
   onOpenChat,
   onOpenAI,
+  onOpenRooms,
   onOpenCall,
   onOpenProfile,
   onLeave,
@@ -292,12 +293,42 @@ export default function HomePage({
             <span className="mobile-text-hidden">ViAM AI</span>
           </button>
 
+          {onOpenRooms && (
+            <button
+              onClick={onOpenRooms}
+              className="cinema-header-pill"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 7,
+                background: T.navPillBg,
+                border: `1px solid ${T.navPillBorder}`,
+                color: T.navPillText,
+                padding: '7px 16px', borderRadius: 20,
+                fontSize: 12.5, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = `rgba(255,85,0,${L ? '0.1' : '0.15'})`;
+                e.currentTarget.style.borderColor = `rgba(255,85,0,${L ? '0.35' : '0.4'})`;
+                e.currentTarget.style.color = L ? '#1a0f06' : '#fff';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = T.navPillBg;
+                e.currentTarget.style.borderColor = T.navPillBorder;
+                e.currentTarget.style.color = T.navPillText;
+              }}
+              title="Manage Lounges & Members"
+            >
+              <Users size={15} color="#ff5500" />
+              <span className="mobile-text-hidden">Rooms</span>
+            </button>
+          )}
+
           <div style={{ width: 1, height: 22, background: L ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)', margin: '0 2px' }} />
 
           <HeaderProfileMenu
             userAccount={currentUser}
             onOpenProfile={onOpenProfile}
             onOpenHistory={onOpenProfile}
+            onOpenRooms={onOpenRooms}
             onLogout={onLeave}
             theme={theme}
           />

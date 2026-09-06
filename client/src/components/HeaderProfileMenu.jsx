@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { User, History, LogOut, ChevronDown, ShieldCheck, Sparkles, Sliders, ExternalLink } from 'lucide-react';
+import { User, History, LogOut, ChevronDown, ShieldCheck, Sparkles, Sliders, ExternalLink, Users } from 'lucide-react';
 import { getT } from '../utils/themeTokens';
 
-export default function HeaderProfileMenu({ userAccount, onOpenProfile, onOpenHistory, onLogout, dropUp = false, theme }) {
+export default function HeaderProfileMenu({ userAccount, onOpenProfile, onOpenHistory, onOpenRooms, onLogout, dropUp = false, theme }) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -164,6 +164,28 @@ export default function HeaderProfileMenu({ userAccount, onOpenProfile, onOpenHi
             </div>
             <span style={{ fontSize: '10.5px', color: T.textMuted2, background: T.chipBg, padding: '2px 6px', borderRadius: '4px', border: `1px solid ${T.chipBorder}` }}>Logs</span>
           </button>
+
+          {/* Option: Lounges & Member Manager */}
+          {onOpenRooms && (
+            <button
+              onClick={() => { setIsOpen(false); onOpenRooms(); }}
+              style={{
+                width: '100%', padding: '9px 10px', borderRadius: '8px',
+                background: 'transparent', border: 'none', color: T.textPrimary,
+                fontSize: '13px', fontWeight: '500', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                transition: 'all 0.12s', textAlign: 'left'
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = T.dropdownHover; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                <Users size={15} color="#ff5500" />
+                <span>Rooms & Members</span>
+              </div>
+              <span style={{ fontSize: '10.5px', color: '#ff5500', background: 'rgba(255,85,0,0.12)', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(255,85,0,0.25)' }}>Manage</span>
+            </button>
+          )}
 
           {/* Option 3: Security & E2EE Info */}
           <div style={{

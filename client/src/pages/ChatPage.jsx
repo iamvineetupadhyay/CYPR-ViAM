@@ -30,7 +30,7 @@ const quickAiPrompts = [
 ───────────────────────────────────────── */
 export default function ChatPage({
   currentUser, roomId, socket, roomUsers = [],
-  mediaState, onMediaChange, onOpenHome, onOpenCinema, onOpenAI, onOpenProfile, onOpenCall, onLeave,
+  mediaState, onMediaChange, onOpenHome, onOpenCinema, onOpenAI, onOpenRooms, onOpenProfile, onOpenCall, onLeave,
   onToggleTheme,
   onGlobalVoiceAction,
   theme = 'dark'
@@ -86,6 +86,9 @@ export default function ChatPage({
         setMessages(decryptedList);
       }
     });
+
+    // Request full persistent chat history from server on mount
+    socket.emit('get-chat-history', { roomId });
 
     socket.on('chat-message-received', async (data) => {
       const decrypted = data.isAI ? data : await decryptPayload(data, roomId);
@@ -688,6 +691,7 @@ export default function ChatPage({
               userAccount={currentUser}
               onOpenProfile={onOpenProfile}
               onOpenHistory={onOpenProfile}
+              onOpenRooms={onOpenRooms}
               onLogout={onLeave}
               dropUp={true}
               theme={theme}
