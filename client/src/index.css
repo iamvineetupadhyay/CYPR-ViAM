@@ -3359,7 +3359,9 @@ body.light-theme .whatsapp-chat-bg {
   }
 
   .viam-logo-animated {
-    height: 42px !important;
+    height: 38px !important;
+    max-width: 120px !important;
+    object-fit: contain !important;
   }
 
   .cinema-control-row {

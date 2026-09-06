@@ -169,7 +169,7 @@ export default function HomePage({
       {/* ══ HEADER ══ */}
       <header style={{
         height: 64,
-        padding: '0 28px',
+        padding: '0 clamp(12px, 3vw, 28px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -182,13 +182,14 @@ export default function HomePage({
         transition: 'background 0.4s ease, border-color 0.35s ease'
       }}>
         {/* Logo + Room Badge */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px, 2vw, 18px)' }}>
           <div onClick={() => onNavigate?.('home')} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }} title="CYPR ViAM Home">
             <img
               src="/viam_logo.png"
               alt="CYPR ViAM"
+              className="viam-logo-animated"
               style={{
-                height: 62,
+                height: 58,
                 width: 'auto',
                 objectFit: 'contain',
                 filter: L

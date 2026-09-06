@@ -254,28 +254,28 @@ export default function ConnectPage({
 
   const presets = [
     {
-      title: 'Sci-Fi Cyberpunk Date',
-      time: '14:20',
-      tag: '4K Stream',
+      title: 'Midnight Romance & Stolen Glances',
+      time: '23:59',
+      tag: '4K Private Stream',
       bgGrad: L
-        ? 'linear-gradient(135deg, rgba(255,85,0,0.15) 0%, rgba(255,255,255,0.95) 75%)'
-        : 'radial-gradient(circle at center, rgba(255,85,0,0.35) 0%, rgba(11,8,6,0.95) 80%)'
+        ? 'linear-gradient(135deg, rgba(244,63,94,0.18) 0%, rgba(255,255,255,0.95) 75%)'
+        : 'radial-gradient(circle at center, rgba(244,63,94,0.38) 0%, rgba(18,10,22,0.95) 80%)'
     },
     {
-      title: 'Chill Anime Night',
-      time: '28:45',
-      tag: 'Japanese Audio',
+      title: 'Late Night Tokyo Date',
+      time: '02:15',
+      tag: 'Intimate HD Call',
       bgGrad: L
-        ? 'linear-gradient(135deg, rgba(168,85,247,0.15) 0%, rgba(255,255,255,0.95) 75%)'
-        : 'radial-gradient(circle at center, rgba(128,0,255,0.35) 0%, rgba(11,8,6,0.95) 80%)'
+        ? 'linear-gradient(135deg, rgba(168,85,247,0.16) 0%, rgba(255,255,255,0.95) 75%)'
+        : 'radial-gradient(circle at center, rgba(147,51,234,0.35) 0%, rgba(16,8,22,0.95) 80%)'
     },
     {
-      title: 'Midnight Cinema Lounge',
-      time: '08:12',
-      tag: 'Duo WebRTC Call',
+      title: 'Candlelight Whispers Lounge',
+      time: '01:30',
+      tag: 'Whisper Audio Mode',
       bgGrad: L
-        ? 'linear-gradient(135deg, rgba(0,245,212,0.15) 0%, rgba(255,255,255,0.95) 75%)'
-        : 'radial-gradient(circle at center, rgba(0,245,212,0.35) 0%, rgba(11,8,6,0.95) 80%)'
+        ? 'linear-gradient(135deg, rgba(225,29,72,0.16) 0%, rgba(255,255,255,0.95) 75%)'
+        : 'radial-gradient(circle at center, rgba(225,29,72,0.35) 0%, rgba(14,8,18,0.95) 80%)'
     }
   ];
 
@@ -659,53 +659,53 @@ export default function ConnectPage({
               gap: '8px',
               padding: '6px 14px',
               borderRadius: '20px',
-              background: L ? 'rgba(255,85,0,0.1)' : 'rgba(255,85,0,0.12)',
-              border: '1px solid rgba(255,85,0,0.3)',
-              color: '#ff5500',
+              background: L ? 'rgba(244,63,94,0.1)' : 'rgba(244,63,94,0.14)',
+              border: '1px solid rgba(244,63,94,0.3)',
+              color: '#f43f5e',
               fontSize: '12px',
               fontWeight: '700',
               letterSpacing: '0.4px',
               marginBottom: '20px'
             }}
           >
-            <Sparkles size={14} color="#ff5500" />
-            <span>0ms Synchronized Frame Engine • AES-256 E2EE</span>
+            <Heart size={14} color="#f43f5e" fill="#f43f5e" />
+            <span>Intimate 0ms Frame Lock • End-to-End Encrypted</span>
           </div>
 
           <h1
             style={{
-              fontSize: '64px',
+              fontSize: 'clamp(34px, 5.5vw, 62px)',
               fontWeight: '900',
               fontFamily: 'Outfit, Plus Jakarta Sans, sans-serif',
-              lineHeight: '1.08',
+              lineHeight: '1.1',
               letterSpacing: '-1.5px',
-              marginBottom: '22px',
+              marginBottom: '20px',
               color: T.textPrimary
             }}
           >
-            The Private Digital <br />
-            Lounge For Couples <br />
+            Where Two Hearts <br />
+            Sync In 4K. <br />
             <span
               style={{
-                background: 'linear-gradient(135deg, #ff5500 0%, #ff8844 100%)',
+                background: 'linear-gradient(135deg, #f43f5e 0%, #ff2d55 50%, #be123c 100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent'
               }}
             >
-              Co-Watching.
+              Private Sanctuary.
             </span>
           </h1>
 
           <p
             style={{
-              fontSize: '16.5px',
+              fontSize: 'clamp(14.5px, 2vw, 16.5px)',
               color: T.textMuted1,
               lineHeight: '1.65',
-              marginBottom: '36px',
-              maxWidth: '560px'
+              marginBottom: '32px',
+              maxWidth: '540px'
             }}
           >
-            Advanced zero-latency frame sync, real-time WebRTC video calls, private AES-256 client encryption, 2-hour privacy auto-purge, and interactive love reactions for couples who demand the highest standards of digital togetherness.
+            Stream seamlessly, whisper across miles, feel every heartbeat. An intimate cinema sanctuary for couples featuring 0ms video sync, real-time face-cam, and total privacy.
           </p>
 
           {/* Action Buttons */}
@@ -713,7 +713,7 @@ export default function ConnectPage({
             <button
               onClick={openCreateRoom}
               style={{
-                background: '#ff5500',
+                background: 'linear-gradient(135deg, #f43f5e 0%, #be123c 100%)',
                 border: 'none',
                 color: '#fff',
                 fontSize: '15px',
@@ -724,7 +724,7 @@ export default function ConnectPage({
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                boxShadow: '0 8px 30px rgba(255,85,0,0.45)',
+                boxShadow: '0 8px 30px rgba(244,63,94,0.45)',
                 transition: 'transform 0.15s, opacity 0.15s'
               }}
               onMouseEnter={(e) => {
@@ -736,8 +736,8 @@ export default function ConnectPage({
                 e.currentTarget.style.opacity = '1';
               }}
             >
-              <Sparkles size={16} />
-              <span>Create Private Lounge</span>
+              <Heart size={16} fill="#fff" />
+              <span>Enter Sanctuary</span>
               <ArrowRight size={16} />
             </button>
 
@@ -1098,55 +1098,55 @@ export default function ConnectPage({
       {/* ========================================================================= */}
       {/* 4. FEATURE SHOWCASE GRID (#features) */}
       {/* ========================================================================= */}
-      <section id="features" style={{ padding: '80px 64px', maxWidth: '1360px', margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: '50px' }}>
-          <span style={{ fontSize: '12px', fontWeight: '800', color: '#ff5500', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
-            ENGINEERED FOR TOGETHERNESS
+      <section id="features" style={{ padding: 'clamp(48px, 8vw, 80px) clamp(16px, 4vw, 64px)', maxWidth: '1360px', margin: '0 auto' }}>
+        <div style={{ textAlign: 'center', marginBottom: '44px' }}>
+          <span style={{ fontSize: '12px', fontWeight: '800', color: '#f43f5e', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
+            THE INTIMATE CINEMA EXPERIENCE
           </span>
-          <h2 style={{ fontSize: '38px', fontWeight: '900', margin: '10px 0 14px', fontFamily: 'Outfit, sans-serif', color: T.textPrimary }}>
-            Built Specifically For Long Distance Couples
+          <h2 style={{ fontSize: 'clamp(28px, 4.5vw, 38px)', fontWeight: '900', margin: '10px 0 12px', fontFamily: 'Outfit, sans-serif', color: T.textPrimary }}>
+            Designed for Two Hearts, Miles Apart
           </h2>
-          <p style={{ fontSize: '15px', color: T.textMuted1, maxWidth: '600px', margin: '0 auto' }}>
-            Everything you need for romantic movie dates without latency, desync, or privacy concerns.
+          <p style={{ fontSize: '15px', color: T.textMuted1, maxWidth: '580px', margin: '0 auto', lineHeight: '1.6' }}>
+            Whisper, react, and stream as one with zero lag, absolute intimacy, and end-to-end privacy.
           </p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
           {[
             {
-              icon: <Film size={26} color="#ff5500" />,
-              title: '0ms Latency Frame Sync',
-              desc: 'Stream YouTube, direct MP4, or custom video links with 100% exact sub-millisecond playback synchronization across both devices.',
-              badge: 'Real-time'
+              icon: <Heart size={24} color="#f43f5e" fill="#f43f5e" />,
+              title: 'Synchronized Heartbeats',
+              desc: 'Sub-millisecond frame lock across YouTube, 4K streams, and cinema files. Never count down to press play again.',
+              badge: '0ms Sync'
             },
             {
-              icon: <Video size={26} color="#8000ff" />,
-              title: 'Duo WebRTC Video Calling',
-              desc: 'Picture-in-picture floating webcam overlays with instant mic and camera toggles right over the movie player.',
-              badge: 'P2P Mesh'
+              icon: <Video size={24} color="#e11d48" />,
+              title: 'Velvet HD Video Lounge',
+              desc: 'Picture-in-picture floating webcam overlays with whisper audio mode right over the movie player.',
+              badge: 'Intimate HD'
             },
             {
-              icon: <ShieldCheck size={26} color="#10b981" />,
-              title: 'AES-256 E2EE Cryptography',
-              desc: 'Zero-knowledge client-side encryption. Nobody outside your room can access your chat, video call, or media stream.',
-              badge: 'Client-side'
+              icon: <ShieldCheck size={24} color="#10b981" />,
+              title: 'Private Sanctuary Security',
+              desc: 'Zero-knowledge AES-256 client encryption. Private lounge entry with host knock approval for your eyes only.',
+              badge: 'Encrypted'
             },
             {
-              icon: <Heart size={26} color="#00f5d4" />,
-              title: 'Live Floating Love Reactions',
-              desc: 'Send romantic emoji particle bursts (💖🍿🔥✨🥰🎉) that float live across your partner\'s video player in real-time.',
-              badge: 'Interactive'
+              icon: <Flame size={24} color="#f97316" />,
+              title: 'Seductive Love Bursts',
+              desc: 'Live floating heart fireworks and romantic spark reactions that burst across your partner\'s screen in real time.',
+              badge: 'Emotions'
             },
             {
-              icon: <Clock size={26} color="#eab308" />,
-              title: '2-Hour Inactivity Auto-Purge',
-              desc: 'All chats and lounge states are preserved while active. If an empty room remains idle for 2 hours, it is permanently deleted.',
-              badge: 'Privacy'
+              icon: <Clock size={24} color="#a855f7" />,
+              title: 'Auto-Purge Discretion',
+              desc: 'Complete privacy guarantee. Lounges without occupants automatically self-destruct after 2 hours of inactivity.',
+              badge: 'Discreet'
             },
             {
-              icon: <Globe size={26} color="#f43f5e" />,
-              title: '100% Free & Cross-Platform',
-              desc: 'Works seamlessly across desktop browsers, laptops, tablets, and smartphones with zero app downloads needed.',
+              icon: <Globe size={24} color="#ec4899" />,
+              title: 'Intimate Anywhere',
+              desc: 'Flawless on iPhone, Android, tablets, and laptops with zero downloads or cumbersome apps required.',
               badge: 'Universal'
             }
           ].map((feat, idx) => (
@@ -1364,47 +1364,47 @@ export default function ConnectPage({
       {/* ========================================================================= */}
       {/* 8. HIGH-IMPACT BOTTOM CTA BANNER */}
       {/* ========================================================================= */}
-      <section style={{ padding: '60px 64px 80px', maxWidth: '1200px', margin: '0 auto' }}>
+      <section style={{ padding: 'clamp(40px, 6vw, 60px) clamp(16px, 4vw, 64px) 80px', maxWidth: '1200px', margin: '0 auto' }}>
         <div
           style={{
             background: L
-              ? 'linear-gradient(135deg, rgba(255,85,0,0.14) 0%, rgba(255,255,255,0.95) 100%)'
-              : 'radial-gradient(circle at center, rgba(255,85,0,0.25) 0%, rgba(11,8,6,0.95) 80%)',
+              ? 'linear-gradient(135deg, rgba(244,63,94,0.12) 0%, rgba(255,255,255,0.98) 100%)'
+              : 'radial-gradient(circle at center, rgba(244,63,94,0.22) 0%, rgba(14,9,18,0.98) 80%)',
             borderRadius: '32px',
-            border: `1.5px solid ${L ? 'rgba(255,85,0,0.3)' : 'rgba(255,85,0,0.4)'}`,
-            padding: '60px 32px',
+            border: `1.5px solid ${L ? 'rgba(244,63,94,0.3)' : 'rgba(244,63,94,0.35)'}`,
+            padding: 'clamp(40px, 6vw, 60px) 24px',
             textAlign: 'center',
             boxShadow: L
-              ? '0 20px 60px rgba(255,85,0,0.12)'
-              : '0 30px 80px rgba(0,0,0,0.9), 0 0 60px rgba(255,85,0,0.3)'
+              ? '0 20px 60px rgba(244,63,94,0.1)'
+              : '0 30px 80px rgba(0,0,0,0.9), 0 0 60px rgba(244,63,94,0.25)'
           }}
         >
-          <h2 style={{ fontSize: '42px', fontWeight: '900', fontFamily: 'Outfit, sans-serif', marginBottom: '16px', color: T.textPrimary }}>
-            Ready To Turn Distance Into Togetherness?
+          <h2 style={{ fontSize: 'clamp(28px, 4.5vw, 42px)', fontWeight: '900', fontFamily: 'Outfit, sans-serif', marginBottom: '14px', color: T.textPrimary }}>
+            Ready For Your Next Midnight Date?
           </h2>
-          <p style={{ fontSize: '16px', color: T.textMuted1, maxWidth: '600px', margin: '0 auto 32px', lineHeight: '1.6' }}>
-            Join thousands of long distance couples co-watching movies with 0ms frame sync and WebRTC video calls today.
+          <p style={{ fontSize: '16px', color: T.textMuted1, maxWidth: '580px', margin: '0 auto 30px', lineHeight: '1.6' }}>
+            Join couples sharing stolen glances, late-night whispers, and synchronized films in complete privacy.
           </p>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '14px', flexWrap: 'wrap' }}>
             <button
               onClick={openCreateRoom}
               style={{
-                background: '#ff5500',
+                background: 'linear-gradient(135deg, #f43f5e 0%, #be123c 100%)',
                 border: 'none',
                 color: '#fff',
-                fontSize: '16px',
+                fontSize: '15px',
                 fontWeight: '800',
-                padding: '16px 36px',
-                borderRadius: '16px',
+                padding: '15px 32px',
+                borderRadius: '14px',
                 cursor: 'pointer',
-                boxShadow: '0 0 35px rgba(255,85,0,0.7)',
+                boxShadow: '0 0 30px rgba(244,63,94,0.5)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px'
               }}
             >
-              <Sparkles size={18} />
-              <span>Create Private Lounge</span>
+              <Heart size={18} fill="#fff" />
+              <span>Enter Private Sanctuary</span>
             </button>
             <button
               onClick={openJoinRoom}

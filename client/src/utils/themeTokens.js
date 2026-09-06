@@ -17,72 +17,79 @@ export function getT(theme = 'dark') {
 
     // ── PAGE BACKGROUNDS ──
     pageBg: L
-      ? 'linear-gradient(145deg, #f7f4ef 0%, #f0ebe0 50%, #ebe3d6 100%)'
-      : '#07080c',
-    pageColor: L ? '#1a1208' : '#ffffff',
+      ? 'linear-gradient(145deg, #fdfbfb 0%, #fcf4f6 50%, #f8e9ee 100%)'
+      : '#09060b',
+    pageColor: L ? '#1f0d14' : '#ffffff',
     pageRadials: L
-      ? `radial-gradient(circle at 15% 15%, rgba(255,120,0,0.05) 0%, transparent 45%),
-         radial-gradient(circle at 85% 20%, rgba(168,85,247,0.04) 0%, transparent 45%),
-         radial-gradient(circle at 50% 80%, rgba(34,197,94,0.03) 0%, transparent 50%)`
-      : `radial-gradient(circle at 15% 15%, rgba(255,85,0,0.08) 0%, transparent 45%),
-         radial-gradient(circle at 85% 20%, rgba(168,85,247,0.07) 0%, transparent 45%),
-         radial-gradient(circle at 50% 80%, rgba(34,197,94,0.05) 0%, transparent 50%),
-         radial-gradient(circle at 50% 10%, #111420 0%, #07080c 70%)`,
+      ? `radial-gradient(circle at 15% 15%, rgba(244,63,94,0.06) 0%, transparent 45%),
+         radial-gradient(circle at 85% 20%, rgba(219,39,119,0.05) 0%, transparent 45%),
+         radial-gradient(circle at 50% 80%, rgba(251,113,133,0.04) 0%, transparent 50%)`
+      : `radial-gradient(circle at 15% 15%, rgba(244,63,94,0.12) 0%, transparent 45%),
+         radial-gradient(circle at 85% 20%, rgba(168,85,247,0.08) 0%, transparent 45%),
+         radial-gradient(circle at 50% 80%, rgba(225,29,72,0.08) 0%, transparent 50%),
+         radial-gradient(circle at 50% 10%, #150918 0%, #09060b 70%)`,
+
+    // ── ROMANTIC ACCENTS ──
+    accentRose: '#f43f5e',
+    accentRoseGlow: 'rgba(244, 63, 94, 0.45)',
+    accentWine: '#be123c',
+    accentBlush: L ? '#ffe4e6' : 'rgba(244, 63, 94, 0.15)',
+    accentBlushBorder: L ? 'rgba(244, 63, 94, 0.25)' : 'rgba(244, 63, 94, 0.35)',
 
     // ── SURFACES ──
-    surface1: L ? 'rgba(247, 242, 234, 0.95)' : 'rgba(10, 12, 18, 0.85)',    // Header
-    surface2: L ? 'rgba(255, 255, 255, 0.97)' : 'rgba(14, 16, 25, 0.95)',    // Cards
-    surface3: L ? 'rgba(255, 255, 255, 0.85)' : 'rgba(17, 20, 30, 0.75)',    // Stations
-    surface4: L ? 'rgba(255, 255, 255, 0.65)' : 'rgba(17, 20, 30, 0.45)',    // Dim tiles
+    surface1: L ? 'rgba(253, 248, 250, 0.95)' : 'rgba(12, 8, 15, 0.88)',    // Header
+    surface2: L ? 'rgba(255, 255, 255, 0.98)' : 'rgba(18, 12, 22, 0.95)',    // Cards
+    surface3: L ? 'rgba(255, 255, 255, 0.9)' : 'rgba(24, 15, 29, 0.8)',      // Stations
+    surface4: L ? 'rgba(255, 255, 255, 0.65)' : 'rgba(24, 15, 29, 0.5)',     // Dim tiles
     surfaceHero: L
-      ? 'linear-gradient(135deg, rgba(255,255,255,0.96) 0%, rgba(250,246,240,0.98) 100%)'
-      : 'linear-gradient(135deg, rgba(22,25,38,0.85) 0%, rgba(13,14,22,0.95) 100%)',
-    surfaceModal: L ? 'rgba(245, 240, 232, 0.98)' : 'rgba(10, 11, 18, 0.96)',
-    surfaceSidebar: L ? '#ede7db' : '#0d0e1a',
-    surfaceInput: L ? 'rgba(255, 255, 255, 0.92)' : 'rgba(255, 255, 255, 0.05)',
-    surfaceRightCard: L ? 'rgba(255, 255, 255, 0.92)' : 'rgba(15, 17, 26, 0.9)',
+      ? 'linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(253,242,246,0.98) 100%)'
+      : 'linear-gradient(135deg, rgba(28,15,32,0.9) 0%, rgba(14,9,18,0.98) 100%)',
+    surfaceModal: L ? 'rgba(253, 246, 249, 0.98)' : 'rgba(14, 9, 18, 0.98)',
+    surfaceSidebar: L ? '#f8eef2' : '#120917',
+    surfaceInput: L ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.05)',
+    surfaceRightCard: L ? 'rgba(255, 255, 255, 0.95)' : 'rgba(20, 13, 25, 0.92)',
 
     // ── BORDERS ──
-    border1: L ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.06)',
-    border2: L ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)',
-    border3: L ? 'rgba(0,0,0,0.11)' : 'rgba(255,255,255,0.10)',
-    border4: L ? 'rgba(0,0,0,0.14)' : 'rgba(255,255,255,0.14)',
-    borderInput: L ? 'rgba(0,0,0,0.14)' : 'rgba(255,255,255,0.1)',
-    borderDivider: L ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.07)',
+    border1: L ? 'rgba(244,63,94,0.08)' : 'rgba(255,255,255,0.06)',
+    border2: L ? 'rgba(244,63,94,0.12)' : 'rgba(244,63,94,0.14)',
+    border3: L ? 'rgba(244,63,94,0.18)' : 'rgba(255,255,255,0.12)',
+    border4: L ? 'rgba(244,63,94,0.22)' : 'rgba(255,255,255,0.16)',
+    borderInput: L ? 'rgba(244,63,94,0.18)' : 'rgba(255,255,255,0.12)',
+    borderDivider: L ? 'rgba(244,63,94,0.1)' : 'rgba(255,255,255,0.08)',
 
     // ── TEXT ──
-    textPrimary: L ? '#1a1208' : '#ffffff',
-    textSecondary: L ? '#2a1f14' : '#f4f4f5',
-    textMuted1: L ? '#6b5a44' : '#94a3b8',   // Body / description
-    textMuted2: L ? '#8a7060' : '#71717a',   // Labels
-    textMuted3: L ? '#8a7060' : '#64748b',   // Faint / subtitles
-    textMuted4: L ? '#7a6a54' : '#a1a1aa',   // Placeholder-ish
+    textPrimary: L ? '#1f0d14' : '#ffffff',
+    textSecondary: L ? '#381622' : '#fdf2f4',
+    textMuted1: L ? '#734d5b' : '#cbd5e1',   // Body / description
+    textMuted2: L ? '#916b7a' : '#94a3b8',   // Labels
+    textMuted3: L ? '#916b7a' : '#78716c',   // Faint / subtitles
+    textMuted4: L ? '#805968' : '#a8a29e',   // Placeholder-ish
 
     // ── HEADER ──
-    headerBg: L ? 'rgba(247, 242, 234, 0.95)' : 'rgba(10, 12, 18, 0.85)',
-    headerBorder: L ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.06)',
+    headerBg: L ? 'rgba(253, 248, 250, 0.95)' : 'rgba(12, 8, 15, 0.88)',
+    headerBorder: L ? 'rgba(244,63,94,0.12)' : 'rgba(244,63,94,0.14)',
 
     // ── PILL / NAV BUTTONS ──
-    pillBg: L ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.04)',
-    pillBorder: L ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.09)',
-    pillText: L ? '#2a1f14' : '#f4f4f5',
+    pillBg: L ? 'rgba(244,63,94,0.06)' : 'rgba(255,255,255,0.05)',
+    pillBorder: L ? 'rgba(244,63,94,0.15)' : 'rgba(244,63,94,0.2)',
+    pillText: L ? '#381622' : '#fdf2f4',
 
     // ── INPUTS ──
-    inputBg: L ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.05)',
-    inputBorder: L ? 'rgba(0,0,0,0.14)' : 'rgba(255,255,255,0.1)',
-    inputText: L ? '#1a1208' : '#ffffff',
-    inputPlaceholder: L ? '#8a7060' : '#71717a',
+    inputBg: L ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.06)',
+    inputBorder: L ? 'rgba(244,63,94,0.18)' : 'rgba(255,255,255,0.12)',
+    inputText: L ? '#1f0d14' : '#ffffff',
+    inputPlaceholder: L ? '#916b7a' : '#78716c',
 
     // ── MESSAGE BUBBLES ──
-    bubbleOwnBg: L ? 'linear-gradient(135deg, rgba(255,85,0,0.16) 0%, rgba(255,119,51,0.12) 100%)' : 'linear-gradient(135deg, rgba(255,85,0,0.22) 0%, rgba(224,68,0,0.28) 100%)',
-    bubbleOwnBorder: L ? 'rgba(255,85,0,0.3)' : 'rgba(255,85,0,0.4)',
-    bubbleOwnText: L ? '#200b00' : '#ffffff',
-    bubbleOtherBg: L ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.05)',
-    bubbleOtherBorder: L ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)',
-    bubbleOtherText: L ? '#1a1208' : '#f4f4f5',
+    bubbleOwnBg: L ? 'linear-gradient(135deg, rgba(244,63,94,0.2) 0%, rgba(225,29,72,0.16) 100%)' : 'linear-gradient(135deg, rgba(244,63,94,0.32) 0%, rgba(190,18,60,0.38) 100%)',
+    bubbleOwnBorder: L ? 'rgba(244,63,94,0.35)' : 'rgba(244,63,94,0.5)',
+    bubbleOwnText: L ? '#290610' : '#ffffff',
+    bubbleOtherBg: L ? 'rgba(255,255,255,0.98)' : 'rgba(255,255,255,0.06)',
+    bubbleOtherBorder: L ? 'rgba(244,63,94,0.12)' : 'rgba(255,255,255,0.08)',
+    bubbleOtherText: L ? '#1f0d14' : '#fdf2f4',
 
     // ── AVATAR ──
-    avatarRing: L ? '#f0ebe0' : '#0d0e16',
+    avatarRing: L ? '#fce7ee' : '#1a0d1d',
 
     // ── CHAT PAGE SPECIFICS ──
     chatBg: L ? '#faf8f5' : '#07080c',

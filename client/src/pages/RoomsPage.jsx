@@ -161,7 +161,7 @@ export default function RoomsPage({
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "0 32px",
+          padding: "0 clamp(12px, 3vw, 32px)",
           position: "sticky",
           top: 0,
           zIndex: 50,
@@ -169,7 +169,7 @@ export default function RoomsPage({
           transition: "background 0.4s ease, border-color 0.35s ease"
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "clamp(8px, 2vw, 14px)" }}>
           <button
             onClick={onBack}
             style={{
@@ -177,7 +177,7 @@ export default function RoomsPage({
               border: `1px solid ${T.pillBorder}`,
               color: T.textPrimary,
               borderRadius: "8px",
-              padding: "6px 14px",
+              padding: "6px 12px",
               fontSize: "12px",
               fontWeight: "600",
               cursor: "pointer",
@@ -190,10 +190,11 @@ export default function RoomsPage({
             onMouseLeave={e => e.currentTarget.style.background = T.pillBg}
           >
             <ArrowLeft size={14} />
-            <span>Back to Lounge</span>
+            <span className="mobile-text-hidden">Back to Lounge</span>
           </button>
-          <img src="/viam_logo.png" alt="CYPR ViAM" style={{ height: "48px", objectFit: "contain" }} />
+          <img src="/viam_logo.png" alt="CYPR ViAM" className="viam-logo-animated" style={{ height: "46px", objectFit: "contain" }} />
           <span
+            className="mobile-text-hidden"
             style={{
               fontSize: "11px",
               fontWeight: "700",

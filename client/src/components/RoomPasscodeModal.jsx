@@ -60,11 +60,11 @@ export default function RoomPasscodeModal({
         style={{
           width: '100%',
           maxWidth: '440px',
-          background: 'linear-gradient(165deg, rgba(24, 25, 36, 0.98) 0%, rgba(13, 14, 22, 0.98) 100%)',
-          border: '1.5px solid rgba(255, 85, 0, 0.45)',
+          background: 'linear-gradient(165deg, rgba(24, 15, 29, 0.98) 0%, rgba(14, 9, 18, 0.98) 100%)',
+          border: '1.5px solid rgba(244, 63, 94, 0.4)',
           borderRadius: '26px',
           padding: '32px 28px',
-          boxShadow: '0 30px 80px rgba(0, 0, 0, 0.95), 0 0 40px rgba(255, 85, 0, 0.22)',
+          boxShadow: '0 30px 80px rgba(0, 0, 0, 0.95), 0 0 40px rgba(244, 63, 94, 0.25)',
           position: 'relative',
           color: '#ffffff',
           textAlign: 'center'
@@ -105,30 +105,30 @@ export default function RoomPasscodeModal({
         )}
 
         {/* Pulsing Lock Icon */}
-        <div style={{ position: 'relative', display: 'inline-block', marginBottom: '20px' }}>
+        <div style={{ position: 'relative', display: 'inline-block', marginBottom: '18px' }}>
           <div
             style={{
               position: 'absolute',
               inset: '-10px',
               borderRadius: '50%',
-              border: '2px solid rgba(255, 85, 0, 0.35)',
+              border: '2px solid rgba(244, 63, 94, 0.35)',
               animation: 'pulse 2s infinite'
             }}
           />
           <div
             style={{
-              width: '68px',
-              height: '68px',
+              width: '66px',
+              height: '66px',
               borderRadius: '50%',
-              background: 'linear-gradient(135deg, rgba(255, 85, 0, 0.25) 0%, rgba(255, 40, 0, 0.1) 100%)',
-              border: '2px solid #ff5500',
+              background: 'linear-gradient(135deg, rgba(244, 63, 94, 0.25) 0%, rgba(190, 18, 60, 0.1) 100%)',
+              border: '2px solid #f43f5e',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 0 30px rgba(255, 85, 0, 0.4)'
+              boxShadow: '0 0 30px rgba(244, 63, 94, 0.4)'
             }}
           >
-            <Lock size={32} color="#ff5500" />
+            <Lock size={30} color="#f43f5e" />
           </div>
         </div>
 
@@ -141,16 +141,16 @@ export default function RoomPasscodeModal({
               gap: '6px',
               padding: '4px 12px',
               borderRadius: '20px',
-              background: 'rgba(255, 85, 0, 0.12)',
-              border: '1px solid rgba(255, 85, 0, 0.3)',
+              background: 'rgba(244, 63, 94, 0.12)',
+              border: '1px solid rgba(244, 63, 94, 0.35)',
               fontSize: '11px',
               fontWeight: '700',
-              color: '#ff7733',
+              color: '#f43f5e',
               marginBottom: '12px',
               textTransform: 'lowercase'
             }}
           >
-            <ShieldCheck size={13} color="#ff5500" />
+            <ShieldCheck size={13} color="#f43f5e" />
             <span>Room: {roomId}</span>
           </div>
         )}
@@ -165,18 +165,18 @@ export default function RoomPasscodeModal({
             letterSpacing: '-0.3px'
           }}
         >
-          Private Lounge Passcode
+          Private Sanctuary Passcode
         </h3>
         <p
           style={{
             fontSize: '13px',
-            color: '#a1a1aa',
-            lineHeight: '1.55',
-            margin: '0 0 24px 0',
+            color: '#cbd5e1',
+            lineHeight: '1.5',
+            margin: '0 0 22px 0',
             padding: '0 8px'
           }}
         >
-          This room is protected by a secret Passcode / PIN. Please enter the passcode to request entry.
+          This sanctuary is protected. Enter passcode to request entry.
         </p>
 
         {/* Error Alert Banner if wrong passcode was entered */}
@@ -305,7 +305,7 @@ export default function RoomPasscodeModal({
               style={{
                 height: '44px',
                 borderRadius: '12px',
-                background: !passcode.trim() ? '#3f3f46' : 'linear-gradient(135deg, #ff5500 0%, #ea580c 100%)',
+                background: !passcode.trim() ? '#271b29' : 'linear-gradient(135deg, #f43f5e 0%, #be123c 100%)',
                 border: 'none',
                 color: '#ffffff',
                 fontSize: '13px',
@@ -315,7 +315,7 @@ export default function RoomPasscodeModal({
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '8px',
-                boxShadow: !passcode.trim() ? 'none' : '0 6px 20px rgba(255, 85, 0, 0.4)',
+                boxShadow: !passcode.trim() ? 'none' : '0 6px 20px rgba(244, 63, 94, 0.45)',
                 transition: 'transform 0.15s, box-shadow 0.15s'
               }}
               onMouseEnter={(e) => {
@@ -325,7 +325,7 @@ export default function RoomPasscodeModal({
                 if (passcode.trim()) e.currentTarget.style.transform = 'translateY(0)';
               }}
             >
-              <span>Unlock & Enter</span>
+              <span>Unlock Sanctuary</span>
               <ArrowRight size={16} />
             </button>
           </div>

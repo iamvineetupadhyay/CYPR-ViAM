@@ -251,7 +251,7 @@ export default function GlobalIncomingCallModal({
             alignItems: 'center',
             gap: '8px',
             fontSize: '13.5px',
-            color: '#a1a1aa',
+            color: '#cbd5e1',
             marginBottom: '28px'
           }}
         >
@@ -260,15 +260,15 @@ export default function GlobalIncomingCallModal({
               width: '8px',
               height: '8px',
               borderRadius: '50%',
-              background: '#22c55e',
-              boxShadow: '0 0 8px #22c55e',
+              background: '#f43f5e',
+              boxShadow: '0 0 10px #f43f5e',
               animation: 'pulse 1.2s infinite'
             }}
           />
-          <span>Incoming {isVideo ? 'Video Call' : 'Voice Call'}...</span>
+          <span>Calling you into the intimate lounge ({isVideo ? 'Video' : 'Voice'})...</span>
         </div>
 
-        {/* Action Buttons: Decline (Red) and Accept (Green) */}
+        {/* Action Buttons: Decline and Accept */}
         <div
           style={{
             display: 'grid',
@@ -284,9 +284,9 @@ export default function GlobalIncomingCallModal({
             style={{
               height: '52px',
               borderRadius: '16px',
-              background: 'rgba(239, 68, 68, 0.15)',
-              border: '1.5px solid rgba(239, 68, 68, 0.4)',
-              color: '#f87171',
+              background: 'rgba(255, 255, 255, 0.08)',
+              border: '1.5px solid rgba(255, 255, 255, 0.14)',
+              color: '#cbd5e1',
               fontSize: '14px',
               fontWeight: '700',
               display: 'flex',
@@ -297,12 +297,14 @@ export default function GlobalIncomingCallModal({
               transition: 'all 0.15s ease'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.3)';
+              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.25)';
               e.currentTarget.style.color = '#ffffff';
+              e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.5)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)';
-              e.currentTarget.style.color = '#f87171';
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+              e.currentTarget.style.color = '#cbd5e1';
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.14)';
             }}
           >
             <PhoneOff size={18} />
@@ -316,7 +318,7 @@ export default function GlobalIncomingCallModal({
             style={{
               height: '52px',
               borderRadius: '16px',
-              background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+              background: 'linear-gradient(135deg, #f43f5e 0%, #be123c 100%)',
               border: 'none',
               color: '#ffffff',
               fontSize: '14px',
@@ -326,20 +328,20 @@ export default function GlobalIncomingCallModal({
               justifyContent: 'center',
               gap: '8px',
               cursor: 'pointer',
-              boxShadow: '0 8px 25px rgba(34, 197, 94, 0.45)',
+              boxShadow: '0 8px 25px rgba(244, 63, 94, 0.5)',
               transition: 'all 0.15s ease'
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'scale(1.03)';
-              e.currentTarget.style.boxShadow = '0 10px 30px rgba(34, 197, 94, 0.6)';
+              e.currentTarget.style.boxShadow = '0 10px 30px rgba(244, 63, 94, 0.65)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'scale(1)';
-              e.currentTarget.style.boxShadow = '0 8px 25px rgba(34, 197, 94, 0.45)';
+              e.currentTarget.style.boxShadow = '0 8px 25px rgba(244, 63, 94, 0.5)';
             }}
           >
             {isVideo ? <Video size={18} /> : <Phone size={18} />}
-            <span>Accept Call</span>
+            <span>Accept & Connect</span>
           </button>
         </div>
 

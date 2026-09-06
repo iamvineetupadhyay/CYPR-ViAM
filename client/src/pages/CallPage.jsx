@@ -229,102 +229,94 @@ export default function CallPage({
 
       {/* ═══════ TOP HEADER ═══════ */}
       <header style={{
-        height: '68px', padding: '0 24px',
+        height: '64px',
+        padding: '0 clamp(12px, 3vw, 24px)',
         background: T.headerBg,
         backdropFilter: 'blur(16px)',
         borderBottom: `1px solid ${T.border2}`,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         zIndex: 20
       }}>
-        {/* Left: Back to Chat & Floating Chat Mode Buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        {/* Left: Navigation, Back to Lounge & Minimize */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button
             onClick={onBackToChat}
             style={{
               background: T.pillBg, border: `1px solid ${T.pillBorder}`,
-              borderRadius: '12px', padding: '8px 14px',
-              color: T.textPrimary, fontSize: '13px', fontWeight: '600',
-              display: 'flex', alignItems: 'center', gap: '8px',
+              borderRadius: '12px', width: '38px', height: '38px',
+              color: T.textPrimary, display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: 'pointer', transition: 'all 0.15s'
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = T.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = T.pillBg)}
+            title="Return to Lounge Chat"
           >
-            <ArrowLeft size={16} />
-            <span>Chat Room</span>
+            <ArrowLeft size={18} />
           </button>
 
-          {/* Minimize / Floating Video Call Button */}
           <button
-            onClick={onMinimizeCall || onBackToChat}
+            onClick={onMinimizeCall}
             style={{
-              background: 'rgba(255, 85, 0, 0.12)', border: '1px solid rgba(255, 85, 0, 0.4)',
-              borderRadius: '12px', padding: '8px 14px',
-              color: '#ff5500', fontSize: '13px', fontWeight: '700',
-              display: 'flex', alignItems: 'center', gap: '8px',
+              background: 'rgba(244, 63, 94, 0.12)', border: '1px solid rgba(244, 63, 94, 0.4)',
+              borderRadius: '12px', padding: '8px 12px',
+              color: '#f43f5e', fontSize: '13px', fontWeight: '700',
+              display: 'flex', alignItems: 'center', gap: '6px',
               cursor: 'pointer', transition: 'all 0.15s'
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255, 85, 0, 0.25)')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255, 85, 0, 0.12)')}
             title="Minimize to Floating Video Call & Open Chat"
           >
             <Minimize2 size={16} />
-            <span>Float & Chat</span>
+            <span className="mobile-text-hidden">Float</span>
           </button>
 
           <div style={{
             background: T.chipBg, border: `1px solid ${T.chipBorder}`,
-            borderRadius: '20px', padding: '6px 14px',
+            borderRadius: '20px', padding: '6px 12px',
             fontSize: '12px', fontWeight: '600', color: T.textPrimary,
             display: 'flex', alignItems: 'center', gap: '6px'
           }}>
-            <ShieldCheck size={15} color="#22c55e" />
-            <span>Room: {roomId}</span>
+            <ShieldCheck size={14} color="#f43f5e" />
+            <span style={{ maxWidth: '90px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{roomId}</span>
           </div>
         </div>
 
         {/* Center: Call Status & Live Timer Badge */}
         <div style={{
           background: T.surface2, border: `1px solid ${T.border2}`,
-          borderRadius: '24px', padding: '6px 20px',
-          display: 'flex', alignItems: 'center', gap: '10px',
-          boxShadow: T.isLight ? '0 4px 16px rgba(0,0,0,0.08)' : '0 4px 20px rgba(0,0,0,0.5)'
+          borderRadius: '24px', padding: '5px 14px',
+          display: 'flex', alignItems: 'center', gap: '8px',
+          boxShadow: T.isLight ? '0 4px 16px rgba(0,0,0,0.06)' : '0 4px 20px rgba(0,0,0,0.5)'
         }}>
           <span style={{
-            width: 9, height: 9, borderRadius: '50%',
-            background: isCallConnected ? '#22c55e' : '#f59e0b',
-            boxShadow: isCallConnected ? '0 0 10px #22c55e' : '0 0 10px #f59e0b'
+            width: 8, height: 8, borderRadius: '50%',
+            background: isCallConnected ? '#f43f5e' : '#f59e0b',
+            boxShadow: isCallConnected ? '0 0 10px #f43f5e' : '0 0 10px #f59e0b'
           }} />
-          <span style={{ fontSize: '14px', fontWeight: '700', color: T.textPrimary }}>
-            {isCallConnected ? formatTimer(callTime) : 'Connecting call...'}
-          </span>
-          <span style={{ fontSize: '11px', color: T.textMuted2, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            ({isVideoCall ? 'Video' : 'Voice'})
+          <span style={{ fontSize: '13px', fontWeight: '700', color: T.textPrimary }}>
+            {isCallConnected ? formatTimer(callTime) : 'Connecting...'}
           </span>
         </div>
 
         {/* Right: Security & Settings Toggle */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div className="mobile-text-hidden" style={{
             background: T.chipBg, border: `1px solid ${T.chipBorder}`,
-            borderRadius: '16px', padding: '6px 12px',
-            fontSize: '12px', fontWeight: '600', color: T.textMuted1,
-            display: 'flex', alignItems: 'center', gap: '6px'
+            borderRadius: '16px', padding: '5px 10px',
+            fontSize: '11px', fontWeight: '600', color: T.textMuted1,
+            display: 'flex', alignItems: 'center', gap: '5px'
           }}>
-            <Activity size={14} color="#ff5500" />
+            <Activity size={13} color="#f43f5e" />
             <span>{qualityMode}</span>
           </div>
 
           <button
             onClick={() => setShowSettings(!showSettings)}
             style={{
-              width: 38, height: 38, borderRadius: '12px',
+              width: 36, height: 36, borderRadius: '12px',
               background: T.pillBg, border: `1px solid ${T.pillBorder}`,
               color: T.textPrimary, display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: 'pointer'
             }}
           >
-            <Settings size={17} />
+            <Settings size={16} />
           </button>
         </div>
       </header>
@@ -451,16 +443,19 @@ export default function CallPage({
           </div>
         )}
 
-        {/* Local PIP Preview Video: Adapts dynamically to portrait (135x220) vs landscape (220x140) */}
+        {/* Local PIP Preview Video: Adapts dynamically to portrait vs landscape with mobile-safe positioning */}
         <div style={{
-          position: 'absolute', bottom: '110px', right: '32px', zIndex: 10,
-          width: isLocalPortrait ? '135px' : '220px',
-          height: isLocalPortrait ? '220px' : '140px',
+          position: 'absolute',
+          bottom: 'clamp(85px, 12vh, 105px)',
+          right: 'clamp(12px, 3vw, 28px)',
+          zIndex: 40,
+          width: isLocalPortrait ? 'clamp(100px, 26vw, 135px)' : 'clamp(140px, 36vw, 220px)',
+          height: isLocalPortrait ? 'clamp(150px, 36vw, 220px)' : 'clamp(95px, 24vw, 140px)',
           borderRadius: '20px',
-          overflow: 'hidden', background: '#141417',
-          border: '2px solid #27272a',
-          boxShadow: '0 20px 40px rgba(0,0,0,0.9)',
-          transition: 'width 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'
+          overflow: 'hidden', background: '#120917',
+          border: '2px solid rgba(244, 63, 94, 0.4)',
+          boxShadow: '0 20px 40px rgba(0,0,0,0.9), 0 0 20px rgba(244, 63, 94, 0.2)',
+          transition: 'all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'
         }}>
           <video
             ref={localVideoRef}
@@ -517,7 +512,7 @@ export default function CallPage({
                 style={{
                   width: '100%', textAlign: 'left', padding: '10px 14px',
                   borderRadius: '10px', marginBottom: '6px',
-                  background: qualityMode === mode ? '#ff5500' : '#18181b',
+                  background: qualityMode === mode ? '#f43f5e' : '#18181b',
                   color: '#ffffff', border: 'none', fontSize: '12px', fontWeight: '600',
                   cursor: 'pointer'
                 }}
@@ -529,29 +524,40 @@ export default function CallPage({
         )}
       </main>
 
-      {/* ═══════ BOTTOM DOCK CONTROLS ═══════ */}
+      {/* ═══════ FIXED MOBILE-RESPONSIVE DOCK CONTROLS ═══════ */}
       <footer style={{
-        height: '84px', padding: '0 32px',
-        background: 'rgba(18, 18, 20, 0.9)',
-        backdropFilter: 'blur(16px)',
-        borderTop: '1px solid #27272a',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        gap: '16px', zIndex: 20
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        width: '100%',
+        minHeight: '74px',
+        padding: '10px 16px max(14px, env(safe-area-inset-bottom))',
+        background: 'rgba(12, 8, 16, 0.94)',
+        backdropFilter: 'blur(24px)',
+        borderTop: '1px solid rgba(244, 63, 94, 0.2)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 'clamp(8px, 2.5vw, 16px)',
+        zIndex: 100,
+        boxShadow: '0 -10px 35px rgba(0, 0, 0, 0.75)'
       }}>
         {/* Toggle Microphone */}
         <button
           onClick={toggleMic}
           style={{
-            width: '52px', height: '52px', borderRadius: '50%',
-            background: isMicMuted ? '#ef4444' : '#18181b',
-            border: isMicMuted ? 'none' : '1px solid #27272a',
+            width: 'clamp(44px, 12vw, 54px)',
+            height: 'clamp(44px, 12vw, 54px)',
+            borderRadius: '50%',
+            background: isMicMuted ? '#ef4444' : 'rgba(255,255,255,0.08)',
+            border: isMicMuted ? 'none' : '1px solid rgba(255,255,255,0.12)',
             color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', transition: 'all 0.2s',
-            boxShadow: '0 6px 20px rgba(0,0,0,0.4)'
+            cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0
           }}
           title={isMicMuted ? 'Unmute Microphone' : 'Mute Microphone'}
         >
-          {isMicMuted ? <MicOff size={22} /> : <Mic size={22} />}
+          {isMicMuted ? <MicOff size={20} /> : <Mic size={20} />}
         </button>
 
         {/* Toggle Camera */}
@@ -559,16 +565,17 @@ export default function CallPage({
           <button
             onClick={toggleCam}
             style={{
-              width: '52px', height: '52px', borderRadius: '50%',
-              background: isCamOff ? '#ef4444' : '#18181b',
-              border: isCamOff ? 'none' : '1px solid #27272a',
+              width: 'clamp(44px, 12vw, 54px)',
+              height: 'clamp(44px, 12vw, 54px)',
+              borderRadius: '50%',
+              background: isCamOff ? '#ef4444' : 'rgba(255,255,255,0.08)',
+              border: isCamOff ? 'none' : '1px solid rgba(255,255,255,0.12)',
               color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', transition: 'all 0.2s',
-              boxShadow: '0 6px 20px rgba(0,0,0,0.4)'
+              cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0
             }}
             title={isCamOff ? 'Turn Camera On' : 'Turn Camera Off'}
           >
-            {isCamOff ? <VideoOff size={22} /> : <Video size={22} />}
+            {isCamOff ? <VideoOff size={20} /> : <Video size={20} />}
           </button>
         )}
 
@@ -576,50 +583,56 @@ export default function CallPage({
         <button
           onClick={handleToggleScreenShare}
           style={{
-            width: '52px', height: '52px', borderRadius: '50%',
-            background: isScreenSharing ? '#ff5500' : '#18181b',
-            border: isScreenSharing ? 'none' : '1px solid #27272a',
+            width: 'clamp(44px, 12vw, 54px)',
+            height: 'clamp(44px, 12vw, 54px)',
+            borderRadius: '50%',
+            background: isScreenSharing ? '#f43f5e' : 'rgba(255,255,255,0.08)',
+            border: isScreenSharing ? 'none' : '1px solid rgba(255,255,255,0.12)',
             color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', transition: 'all 0.2s',
-            boxShadow: '0 6px 20px rgba(0,0,0,0.4)'
+            cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0
           }}
           title="Share Screen"
         >
-          <Monitor size={22} />
+          <Monitor size={20} />
         </button>
 
         {/* Toggle Speaker Audio */}
         <button
           onClick={() => setIsSpeakerMuted(!isSpeakerMuted)}
           style={{
-            width: '52px', height: '52px', borderRadius: '50%',
-            background: isSpeakerMuted ? '#ef4444' : '#18181b',
-            border: isSpeakerMuted ? 'none' : '1px solid #27272a',
+            width: 'clamp(44px, 12vw, 54px)',
+            height: 'clamp(44px, 12vw, 54px)',
+            borderRadius: '50%',
+            background: isSpeakerMuted ? '#ef4444' : 'rgba(255,255,255,0.08)',
+            border: isSpeakerMuted ? 'none' : '1px solid rgba(255,255,255,0.12)',
             color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', transition: 'all 0.2s',
-            boxShadow: '0 6px 20px rgba(0,0,0,0.4)'
+            cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0
           }}
           title={isSpeakerMuted ? 'Unmute Speaker' : 'Mute Speaker'}
         >
-          {isSpeakerMuted ? <VolumeX size={22} /> : <Volume2 size={22} />}
+          {isSpeakerMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
         </button>
 
         {/* End Call (Red Button) */}
         <button
           onClick={handleEndCall}
           style={{
-            width: '60px', height: '60px', borderRadius: '50%',
-            background: '#ef4444', border: 'none',
+            width: 'clamp(50px, 14vw, 62px)',
+            height: 'clamp(50px, 14vw, 62px)',
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, #ef4444 0%, #be123c 100%)',
+            border: 'none',
             color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', boxShadow: '0 8px 24px rgba(239, 68, 68, 0.5)',
+            cursor: 'pointer', boxShadow: '0 8px 24px rgba(239, 68, 68, 0.55)',
             transition: 'transform 0.15s, background 0.15s',
-            marginLeft: '8px'
+            flexShrink: 0,
+            marginLeft: '4px'
           }}
           onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.08)')}
           onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
           title="End Call"
         >
-          <PhoneOff size={24} />
+          <PhoneOff size={22} />
         </button>
       </footer>
     </div>

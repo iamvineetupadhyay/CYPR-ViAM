@@ -131,11 +131,11 @@ export default function RoomModal({ isOpen, onClose, onJoinRoom, defaultRoomId, 
         <div style={{ textAlign: 'center', marginBottom: '18px' }}>
           <img src="/viam_logo.png" alt="VIAM" style={{ height: '48px', width: 'auto', marginBottom: '8px', objectFit: 'contain' }} />
           <h2 style={{ fontSize: '19px', fontWeight: '800', color: T.textPrimary, margin: 0, letterSpacing: '-0.3px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-            {mode === 'create' ? <Sparkles size={18} color="#ff7733" /> : <Key size={18} color="#ff7733" />}
-            <span>{mode === 'create' ? 'Create Co-Watch Lounge' : 'Join Existing Lounge'}</span>
+            {mode === 'create' ? <Heart size={18} color="#f43f5e" fill="#f43f5e" /> : <Key size={18} color="#f43f5e" />}
+            <span>{mode === 'create' ? 'Create Private Sanctuary' : 'Enter Lounge'}</span>
           </h2>
           <p style={{ fontSize: '12px', color: T.textMuted2, margin: '4px 0 0 0' }}>
-            {mode === 'create' ? 'Configure your private room & invite your partner' : 'Enter room code to connect in real-time'}
+            {mode === 'create' ? 'Your private sanctuary for late-night cinema' : 'Enter room code to connect with your partner'}
           </p>
         </div>
 
@@ -149,10 +149,10 @@ export default function RoomModal({ isOpen, onClose, onJoinRoom, defaultRoomId, 
             }}
             style={{
               height: '38px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-              background: mode === 'create' ? '#ff5500' : 'transparent',
+              background: mode === 'create' ? 'linear-gradient(135deg, #f43f5e, #be123c)' : 'transparent',
               color: mode === 'create' ? '#fff' : T.textMuted1,
               fontSize: '13px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-              boxShadow: mode === 'create' ? '0 0 16px rgba(255,85,0,0.4)' : 'none',
+              boxShadow: mode === 'create' ? '0 0 16px rgba(244,63,94,0.4)' : 'none',
               transition: 'all 0.15s'
             }}
           >
@@ -163,10 +163,10 @@ export default function RoomModal({ isOpen, onClose, onJoinRoom, defaultRoomId, 
             onClick={() => setMode('join')}
             style={{
               height: '38px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-              background: mode === 'join' ? '#ff5500' : 'transparent',
+              background: mode === 'join' ? 'linear-gradient(135deg, #f43f5e, #be123c)' : 'transparent',
               color: mode === 'join' ? '#fff' : T.textMuted1,
               fontSize: '13px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-              boxShadow: mode === 'join' ? '0 0 16px rgba(255,85,0,0.4)' : 'none',
+              boxShadow: mode === 'join' ? '0 0 16px rgba(244,63,94,0.4)' : 'none',
               transition: 'all 0.15s'
             }}
           >
@@ -360,14 +360,15 @@ export default function RoomModal({ isOpen, onClose, onJoinRoom, defaultRoomId, 
             style={{
               width: '100%', height: '46px', borderRadius: '12px',
               fontSize: '14px', fontWeight: '700', color: '#fff',
-              background: '#ff5500', border: 'none', cursor: 'pointer',
+              background: 'linear-gradient(135deg, #f43f5e 0%, #be123c 100%)',
+              border: 'none', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-              marginTop: '6px', boxShadow: '0 0 20px rgba(255,85,0,0.4)', transition: 'opacity 0.2s'
+              marginTop: '6px', boxShadow: '0 4px 20px rgba(244,63,94,0.45)', transition: 'opacity 0.2s'
             }}
             onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
             onMouseLeave={e => e.currentTarget.style.opacity = '1'}
           >
-            <span>{mode === 'create' ? '✨ Create & Enter Lounge 🚀' : '🚪 Join Lounge Now'}</span>
+            <span>{mode === 'create' ? 'Enter Sanctuary' : 'Join Lounge'}</span>
             <ArrowRight size={15} />
           </button>
         </form>

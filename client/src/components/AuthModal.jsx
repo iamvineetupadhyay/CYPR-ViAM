@@ -235,9 +235,10 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, i
 
         {/* Header Logo */}
         <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-          <img src="/viam_logo.png" alt="VIAM" style={{ height: '56px', width: 'auto', marginBottom: '8px', objectFit: 'contain' }} />
-          <h2 style={{ fontSize: '18px', fontWeight: '700', color: T.textPrimary, margin: 0, letterSpacing: '-0.3px' }}>
-            {tab === 'signup' ? 'Create Account' : 'Welcome Back'}
+          <img src="/viam_logo.png" alt="VIAM" style={{ height: '52px', width: 'auto', marginBottom: '8px', objectFit: 'contain' }} />
+          <h2 style={{ fontSize: '18px', fontWeight: '800', color: T.textPrimary, margin: 0, letterSpacing: '-0.3px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+            <Heart size={18} color="#f43f5e" fill="#f43f5e" />
+            <span>{tab === 'signup' ? 'Enter The Sanctuary' : 'Welcome to The Sanctuary'}</span>
           </h2>
         </div>
 
@@ -245,24 +246,24 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, i
         {inviteRoom && (
           <div
             style={{
-              background: 'rgba(255, 85, 0, 0.12)',
-              border: '1.5px solid rgba(255, 85, 0, 0.4)',
+              background: 'rgba(244, 63, 94, 0.12)',
+              border: '1.5px solid rgba(244, 63, 94, 0.35)',
               borderRadius: '14px',
-              padding: '12px 14px',
-              marginBottom: '18px',
+              padding: '10px 14px',
+              marginBottom: '16px',
               display: 'flex',
               alignItems: 'center',
-              gap: '12px',
+              gap: '10px',
               textAlign: 'left'
             }}
           >
-            <ShieldCheck size={24} color="#ff5500" style={{ flexShrink: 0 }} />
+            <ShieldCheck size={20} color="#f43f5e" style={{ flexShrink: 0 }} />
             <div>
-              <div style={{ fontSize: '13px', fontWeight: '800', color: '#ff7733' }}>
-                Lounge Invite: {inviteRoom}
+              <div style={{ fontSize: '12.5px', fontWeight: '800', color: '#f43f5e' }}>
+                Private Sanctuary: {inviteRoom}
               </div>
-              <div style={{ fontSize: '11.5px', color: T.textMuted1, marginTop: '2px', lineHeight: '1.4' }}>
-                Account registration is mandatory to enter this lounge. Please sign up or log in to proceed.
+              <div style={{ fontSize: '11px', color: T.textMuted1, marginTop: '2px' }}>
+                Sign up or log in to unlock and enter this lounge.
               </div>
             </div>
           </div>
@@ -279,11 +280,11 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, i
             onClick={() => { setTab('signup'); setError(''); setSuccessMsg(''); }}
             style={{
               height: '38px', borderRadius: '9px', border: 'none',
-              background: tab === 'signup' ? '#ff5500' : 'transparent',
+              background: tab === 'signup' ? 'linear-gradient(135deg, #f43f5e, #be123c)' : 'transparent',
               color: tab === 'signup' ? '#ffffff' : T.textMuted1,
               fontWeight: '700', fontSize: '13px', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-              boxShadow: tab === 'signup' ? '0 0 14px rgba(255,85,0,0.3)' : 'none',
+              boxShadow: tab === 'signup' ? '0 0 14px rgba(244,63,94,0.35)' : 'none',
               transition: 'all 0.15s'
             }}
           >
@@ -295,11 +296,11 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, i
             onClick={() => { setTab('login'); setError(''); setSuccessMsg(''); }}
             style={{
               height: '38px', borderRadius: '9px', border: 'none',
-              background: tab === 'login' ? '#ff5500' : 'transparent',
+              background: tab === 'login' ? 'linear-gradient(135deg, #f43f5e, #be123c)' : 'transparent',
               color: tab === 'login' ? '#ffffff' : T.textMuted1,
               fontWeight: '700', fontSize: '13px', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-              boxShadow: tab === 'login' ? '0 0 14px rgba(255,85,0,0.3)' : 'none',
+              boxShadow: tab === 'login' ? '0 0 14px rgba(244,63,94,0.35)' : 'none',
               transition: 'all 0.15s'
             }}
           >
@@ -617,10 +618,12 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, i
               disabled={loading}
               style={{
                 width: '100%', height: '44px', borderRadius: '10px',
-                fontSize: '14px', fontWeight: '600', color: '#fff',
-                background: '#ff5500', border: 'none', cursor: 'pointer',
+                fontSize: '14px', fontWeight: '700', color: '#fff',
+                background: 'linear-gradient(135deg, #f43f5e 0%, #be123c 100%)',
+                border: 'none', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                marginTop: '6px', transition: 'opacity 0.2s'
+                marginTop: '6px', transition: 'opacity 0.2s',
+                boxShadow: '0 4px 18px rgba(244, 63, 94, 0.4)'
               }}
               onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
               onMouseLeave={e => e.currentTarget.style.opacity = '1'}
@@ -683,10 +686,12 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, i
               disabled={loading}
               style={{
                 width: '100%', height: '44px', borderRadius: '10px',
-                fontSize: '14px', fontWeight: '600', color: '#fff',
-                background: '#ff5500', border: 'none', cursor: 'pointer',
+                fontSize: '14px', fontWeight: '700', color: '#fff',
+                background: 'linear-gradient(135deg, #f43f5e 0%, #be123c 100%)',
+                border: 'none', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                marginTop: '6px', transition: 'opacity 0.2s'
+                marginTop: '6px', transition: 'opacity 0.2s',
+                boxShadow: '0 4px 18px rgba(244, 63, 94, 0.4)'
               }}
               onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
               onMouseLeave={e => e.currentTarget.style.opacity = '1'}
