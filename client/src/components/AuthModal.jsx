@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   X, Mail, Lock, User, Phone, CheckCircle2,
-  AlertCircle, ArrowRight, Camera, UserPlus, LogIn, Sparkles, ShieldCheck, Key, Loader2
+  AlertCircle, ArrowRight, Camera, UserPlus, LogIn, Sparkles, ShieldCheck, Key, Loader2, Heart
 } from 'lucide-react';
 import { SERVER_URL } from '../utils/apiUrl';
 import { getT } from '../utils/themeTokens';

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Lock, Globe, Copy, Check, RefreshCw, Share2, ArrowRight, Users, X, LogIn, Plus, Sparkles, Key } from 'lucide-react';
+import { Lock, Globe, Copy, Check, RefreshCw, Share2, ArrowRight, Users, X, LogIn, Plus, Sparkles, Key, Heart } from 'lucide-react';
 import { getT } from '../utils/themeTokens';
 
 function generateRandomRoomCode() {
