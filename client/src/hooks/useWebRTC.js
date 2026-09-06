@@ -100,16 +100,26 @@ export function useWebRTC(socket, roomId, user) {
 
   const iceQueueRef = useRef([]);
 
-  // Helper to ensure local media tracks are added to RTCPeerConnection
+  // Helper to ensure local media tracks are added to RTCPeerConnection cleanly without altering m-line order
   const attachLocalTracks = useCallback((pc) => {
     const peer = pc || pcRef.current;
     if (peer && localStreamRef.current) {
       const senders = peer.getSenders();
-      const existingTrackIds = senders.map((s) => s.track?.id).filter(Boolean);
       localStreamRef.current.getTracks().forEach((track) => {
-        if (!existingTrackIds.includes(track.id)) {
-          console.log('[WebRTC] Adding local media track to peer:', track.kind, track.id);
-          peer.addTrack(track, localStreamRef.current);
+        // Find existing sender of the same kind to replace track and maintain consistent m-line order
+        const existingSender = senders.find(s => s.track?.id === track.id || (s.track && s.track.kind === track.kind) || (!s.track && s.kind === track.kind));
+        if (existingSender) {
+          try {
+            existingSender.replaceTrack(track);
+          } catch (e) {
+            console.warn('[WebRTC] replaceTrack warning:', e?.message || e);
+          }
+        } else {
+          try {
+            peer.addTrack(track, localStreamRef.current);
+          } catch (e) {
+            console.warn('[WebRTC] addTrack warning:', e?.message || e);
+          }
         }
       });
     }
@@ -124,7 +134,7 @@ export function useWebRTC(socket, roomId, user) {
       try {
         await peer.addIceCandidate(new RTCIceCandidate(cand));
       } catch (err) {
-        console.warn('[WebRTC] Error adding queued ICE candidate:', err);
+        console.warn('[WebRTC] Error adding queued ICE candidate:', err?.message || err);
       }
     }
   }, []);
@@ -135,6 +145,7 @@ export function useWebRTC(socket, roomId, user) {
       try {
         pcRef.current.close();
       } catch { }
+      pcRef.current = null;
     }
 
     const rtcConfig = getWebRTCConfiguration();
@@ -144,7 +155,7 @@ export function useWebRTC(socket, roomId, user) {
     targetPeerIdRef.current = targetSocketId;
     isRestartingIceRef.current = false;
 
-    // Ensure transceiver m-lines exist for both audio and video
+    // Ensure transceiver m-lines exist in fixed (audio=0, video=1) order for full SDP consistency
     try {
       pc.addTransceiver('audio', { direction: 'sendrecv' });
       pc.addTransceiver('video', { direction: 'sendrecv' });
@@ -152,7 +163,7 @@ export function useWebRTC(socket, roomId, user) {
       console.warn('[WebRTC] Transceiver initialization note:', e?.message);
     }
 
-    // Add local media tracks to peer connection
+    // Attach local media tracks if available
     attachLocalTracks(pc);
 
     // Handle remote tracks
@@ -160,10 +171,16 @@ export function useWebRTC(socket, roomId, user) {
       console.log('[WebRTC] Remote track received:', event.track?.kind, event.streams);
       let stream = event.streams && event.streams[0];
       if (!stream) {
-        stream = new MediaStream();
-        stream.addTrack(event.track);
+        setRemoteStream(prev => {
+          const s = prev || new MediaStream();
+          if (!s.getTracks().some(t => t.id === event.track.id)) {
+            s.addTrack(event.track);
+          }
+          return new MediaStream(s.getTracks());
+        });
+      } else {
+        setRemoteStream(stream);
       }
-      setRemoteStream(stream);
       setIsCallConnected(true);
     };
 
@@ -225,6 +242,13 @@ export function useWebRTC(socket, roomId, user) {
     if (!pc || pc.signalingState === 'closed') {
       pc = createPeerConnection(targetSocketId);
     }
+
+    // State guard: Do NOT create offer if already in middle of negotiation (glare prevention)
+    if (pc.signalingState !== 'stable') {
+      console.warn('[WebRTC] Skipping createOffer because signalingState is already negotiating:', pc.signalingState);
+      return;
+    }
+
     attachLocalTracks(pc);
 
     try {
@@ -234,6 +258,10 @@ export function useWebRTC(socket, roomId, user) {
         iceRestart: !!options.iceRestart
       };
       const offer = await pc.createOffer(offerOptions);
+      if (pc.signalingState !== 'stable') {
+        console.warn('[WebRTC] signalingState changed during offer creation; aborting setLocalDescription. State:', pc.signalingState);
+        return;
+      }
       await pc.setLocalDescription(offer);
       const encryptedOffer = await encryptPayload(offer, roomId);
       if (socket) {
@@ -275,7 +303,10 @@ export function useWebRTC(socket, roomId, user) {
       console.log('[WebRTC] Peer is ready for connection:', initiatorId);
       if (remoteUser?.name) setPeerName(remoteUser.name);
       if (initiatorId && initiatorId !== socket.id) {
-        createOfferAndSend(initiatorId);
+        // Only initiate if we don't have an in-flight offer/negotiation
+        if (!pcRef.current || pcRef.current.signalingState === 'stable') {
+          createOfferAndSend(initiatorId);
+        }
       }
     };
 
@@ -294,22 +325,35 @@ export function useWebRTC(socket, roomId, user) {
         const rawOffer = await decryptPayload(offer, roomId);
         if (!rawOffer) return;
 
-        // If in have-local-offer (glare), determine collision handling or rollback
+        // Glare resolution: If in have-local-offer, rollback local offer to accept remote offer
         if (pc.signalingState !== 'stable') {
           console.warn('[WebRTC] Offer collision/glare detected. Rolling back local offer to accept remote offer.');
           try {
-            await Promise.all([
-              pc.setLocalDescription({ type: 'rollback' }),
-              pc.setRemoteDescription(new RTCSessionDescription(rawOffer))
-            ]);
-          } catch {
-            await pc.setRemoteDescription(new RTCSessionDescription(rawOffer));
+            await pc.setLocalDescription({ type: 'rollback' });
+          } catch (rbErr) {
+            console.warn('[WebRTC] Rollback error, creating fresh RTCPeerConnection:', rbErr?.message || rbErr);
+            pc = createPeerConnection(senderSocketId);
+            attachLocalTracks(pc);
           }
-        } else {
+        }
+
+        // Set remote description with clean fallback if previous session left incompatible m-lines
+        try {
+          await pc.setRemoteDescription(new RTCSessionDescription(rawOffer));
+        } catch (srdErr) {
+          console.warn('[WebRTC] m-line or session mismatch in setRemoteDescription. Recreating clean RTCPeerConnection...', srdErr?.message || srdErr);
+          pc = createPeerConnection(senderSocketId);
+          attachLocalTracks(pc);
           await pc.setRemoteDescription(new RTCSessionDescription(rawOffer));
         }
 
         await processIceQueue(pc);
+
+        // State check before answering: we must be in have-remote-offer
+        if (pc.signalingState !== 'have-remote-offer') {
+          console.warn('[WebRTC] Cannot create answer: unexpected signalingState:', pc.signalingState);
+          return;
+        }
 
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
@@ -328,6 +372,12 @@ export function useWebRTC(socket, roomId, user) {
     const handleAnswer = async ({ answer }) => {
       console.log('[WebRTC] Received E2EE encrypted answer');
       if (pcRef.current && answer) {
+        // Strict guard: ignore duplicate or late answers when already stable or closed
+        if (pcRef.current.signalingState !== 'have-local-offer') {
+          console.log('[WebRTC] Ignoring answer: connection is not expecting an answer (state is:', pcRef.current.signalingState, ')');
+          return;
+        }
+
         try {
           const rawAnswer = await decryptPayload(answer, roomId);
           if (rawAnswer && pcRef.current.signalingState === 'have-local-offer') {

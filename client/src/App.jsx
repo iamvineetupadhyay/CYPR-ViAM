@@ -31,6 +31,7 @@ export default function App() {
     return 'connect';
   });
   const [callIsVideo, setCallIsVideo] = useState(true);
+  const [callIsInitiator, setCallIsInitiator] = useState(false);
   const [isCallActive, setIsCallActive] = useState(false);
   const [isCallMinimized, setIsCallMinimized] = useState(false);
   const [incomingCall, setIncomingCall] = useState(null);
@@ -437,8 +438,9 @@ export default function App() {
     handleLeave();
   };
 
-  const handleOpenCall = (isVideo = true) => {
+  const handleOpenCall = (isVideo = true, isInitiator = true) => {
     setCallIsVideo(isVideo);
+    setCallIsInitiator(isInitiator);
     setIsCallActive(true);
     setIsCallMinimized(false);
     setPage('call');
@@ -451,7 +453,7 @@ export default function App() {
     if (socket) {
       socket.emit('call-accepted', { to: callData?.from || roomId });
     }
-    handleOpenCall(isVideo);
+    handleOpenCall(isVideo, false);
   };
 
   const handleDeclineIncomingCall = (callData) => {
@@ -471,7 +473,16 @@ export default function App() {
   };
 
   // Shared props
-  const sharedProps = { currentUser, roomId, socket, roomUsers, onGlobalVoiceAction: handleGlobalVoiceAction, theme, onToggleTheme: () => setTheme(t => t === 'dark' ? 'light' : 'dark') };
+  const sharedProps = {
+    currentUser,
+    roomId,
+    socket,
+    roomUsers,
+    webrtc,
+    onGlobalVoiceAction: handleGlobalVoiceAction,
+    theme,
+    onToggleTheme: () => setTheme(t => t === 'dark' ? 'light' : 'dark')
+  };
 
   return (
     <>
@@ -559,6 +570,7 @@ export default function App() {
           {...sharedProps}
           webrtc={webrtc}
           initialIsVideo={callIsVideo}
+          isInitiator={callIsInitiator}
           onBackToChat={() => {
             setIsCallMinimized(true);
             setPage('chat');

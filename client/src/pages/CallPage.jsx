@@ -5,7 +5,6 @@ import {
   Minimize2, Grid, User, RefreshCw, MessageSquare, ArrowLeft,
   Sparkles, Settings, Activity
 } from 'lucide-react';
-import { useWebRTC } from '../hooks/useWebRTC';
 import { getT } from '../utils/themeTokens';
 
 export default function CallPage({
@@ -14,7 +13,8 @@ export default function CallPage({
   socket,
   roomUsers,
   initialIsVideo = true,
-  webrtc: externalWebrtc,
+  isInitiator = false,
+  webrtc,
   onBackToChat,
   onMinimizeCall,
   theme = 'dark'
@@ -55,24 +55,21 @@ export default function CallPage({
     }
   }, []);
 
-  // Use external shared WebRTC instance if provided by App, otherwise fallback
-  const internalWebrtc = useWebRTC(socket, roomId, currentUser);
-  const webrtc = externalWebrtc || internalWebrtc;
-
   const {
     localStream, remoteStream,
     isMicMuted, isCamOff, isCallConnected,
     peerName, startLocalCall, createOfferAndSend,
     stopLocalMedia, toggleMic, toggleCam
-  } = webrtc;
+  } = webrtc || {};
 
-  // Initialize Call on Mount if local stream not active yet
+  // Initialize Call on Mount: start local media, and ONLY emit call-invite if this user is the initiator!
   useEffect(() => {
     let mounted = true;
     const initCall = async () => {
-      if (mounted && !localStream) {
+      if (mounted && startLocalCall && !localStream) {
         await startLocalCall(isVideoCall);
-        if (socket) {
+        if (socket && isInitiator) {
+          console.log('[CallPage] Initiator emitting call-invite to room:', roomId);
           socket.emit('call-invite', { isVideo: isVideoCall, to: roomId });
         }
       }
@@ -82,7 +79,7 @@ export default function CallPage({
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [startLocalCall, isVideoCall, socket, isInitiator, roomId]);
 
   // Socket event listeners for call lifecycle
   useEffect(() => {
@@ -97,20 +94,20 @@ export default function CallPage({
 
     const handleCallEnded = () => {
       console.log('[CallPage] Call ended by partner');
-      stopLocalMedia();
+      stopLocalMedia?.();
       onBackToChat?.();
     };
 
     const handleCallDeclined = () => {
       console.log('[CallPage] Call declined by partner');
-      stopLocalMedia();
+      stopLocalMedia?.();
       alert('Partner declined the call.');
       onBackToChat?.();
     };
 
     const handleUserLeft = () => {
       console.log('[CallPage] Partner left room');
-      stopLocalMedia();
+      stopLocalMedia?.();
       onBackToChat?.();
     };
 
@@ -130,28 +127,44 @@ export default function CallPage({
   // Attach local media stream to local video element
   useEffect(() => {
     if (localVideoRef.current && localStream) {
-      localVideoRef.current.srcObject = localStream;
+      if (localVideoRef.current.srcObject !== localStream) {
+        localVideoRef.current.srcObject = localStream;
+      }
       localVideoRef.current.play()
         .then(() => detectLocalOrientation())
-        .catch((err) => console.warn('[CallPage] Local video play error:', err));
+        .catch((err) => {
+          if (err.name !== 'AbortError') console.warn('[CallPage] Local video play notice:', err?.message || err);
+        });
     }
   }, [localStream, detectLocalOrientation]);
 
-  // Attach remote stream to remote video & audio elements
+  // Attach remote stream to remote video & audio elements without interrupting active playback
   useEffect(() => {
     if (remoteVideoRef.current && remoteStream) {
-      remoteVideoRef.current.srcObject = remoteStream;
+      if (remoteVideoRef.current.srcObject !== remoteStream) {
+        remoteVideoRef.current.srcObject = remoteStream;
+      }
       remoteVideoRef.current.play()
         .then(() => detectRemoteOrientation())
-        .catch((err) => console.warn('[CallPage] Remote video play error:', err));
+        .catch((err) => {
+          if (err.name !== 'AbortError') console.warn('[CallPage] Remote video play notice:', err?.message || err);
+        });
     }
     if (remoteBgVideoRef.current && remoteStream) {
-      remoteBgVideoRef.current.srcObject = remoteStream;
-      remoteBgVideoRef.current.play().catch((err) => console.warn('[CallPage] Remote BG video play error:', err));
+      if (remoteBgVideoRef.current.srcObject !== remoteStream) {
+        remoteBgVideoRef.current.srcObject = remoteStream;
+      }
+      remoteBgVideoRef.current.play().catch((err) => {
+        if (err.name !== 'AbortError') console.warn('[CallPage] Remote BG video notice:', err?.message || err);
+      });
     }
     if (remoteAudioRef.current && remoteStream) {
-      remoteAudioRef.current.srcObject = remoteStream;
-      remoteAudioRef.current.play().catch((err) => console.warn('[CallPage] Remote audio play error:', err));
+      if (remoteAudioRef.current.srcObject !== remoteStream) {
+        remoteAudioRef.current.srcObject = remoteStream;
+      }
+      remoteAudioRef.current.play().catch((err) => {
+        if (err.name !== 'AbortError') console.warn('[CallPage] Remote audio notice:', err?.message || err);
+      });
     }
   }, [remoteStream, detectRemoteOrientation]);
 

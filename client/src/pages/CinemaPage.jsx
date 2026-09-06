@@ -13,7 +13,6 @@ import ChatWindow from '../components/ChatWindow';
 import ChatInput from '../components/ChatInput';
 import HeaderProfileMenu from '../components/HeaderProfileMenu';
 import AiCinemaCompanion from '../components/AiCinemaCompanion';
-import { useWebRTC } from '../hooks/useWebRTC';
 import { encryptPayload, decryptPayload } from '../utils/cryptoUtils';
 import { SERVER_URL } from '../utils/apiUrl';
 import { getT } from '../utils/themeTokens';
@@ -24,6 +23,7 @@ export default function CinemaPage({
   roomId,
   socket,
   roomUsers,
+  webrtc,
   onBack,
   onOpenChat,
   onOpenAI,
@@ -67,7 +67,7 @@ export default function CinemaPage({
     localStream, remoteStream,
     isMicMuted, isCamOff, isCallConnected, peerName,
     startLocalCall, createOfferAndSend, stopLocalMedia, toggleMic, toggleCam
-  } = useWebRTC(socket, roomId, currentUser);
+  } = webrtc || {};
 
   // Request initial room media state on join/mount
   useEffect(() => {
