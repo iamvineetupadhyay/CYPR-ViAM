@@ -5,9 +5,14 @@ function registerWebRTCHandlers(io, socket, state) {
   socket.on('webrtc-offer', ({ targetSocketId, offer, sender }) => {
     if (!state.currentRoom) return;
     const room = RoomStore.getRoom(state.currentRoom);
-    // Security check: ensure both target and sender are in the same room
-    if (room && room.users.has(socket.id) && room.users.has(targetSocketId)) {
+    if (room && targetSocketId && room.users.has(socket.id) && room.users.has(targetSocketId)) {
       socket.to(targetSocketId).emit('webrtc-offer', {
+        offer,
+        senderSocketId: socket.id,
+        sender
+      });
+    } else {
+      socket.to(state.currentRoom).emit('webrtc-offer', {
         offer,
         senderSocketId: socket.id,
         sender
@@ -19,8 +24,13 @@ function registerWebRTCHandlers(io, socket, state) {
   socket.on('webrtc-answer', ({ targetSocketId, answer }) => {
     if (!state.currentRoom) return;
     const room = RoomStore.getRoom(state.currentRoom);
-    if (room && room.users.has(socket.id) && room.users.has(targetSocketId)) {
+    if (room && targetSocketId && room.users.has(socket.id) && room.users.has(targetSocketId)) {
       socket.to(targetSocketId).emit('webrtc-answer', {
+        answer,
+        senderSocketId: socket.id
+      });
+    } else {
+      socket.to(state.currentRoom).emit('webrtc-answer', {
         answer,
         senderSocketId: socket.id
       });
@@ -31,12 +41,27 @@ function registerWebRTCHandlers(io, socket, state) {
   socket.on('webrtc-ice-candidate', ({ targetSocketId, candidate }) => {
     if (!state.currentRoom) return;
     const room = RoomStore.getRoom(state.currentRoom);
-    if (room && room.users.has(socket.id) && room.users.has(targetSocketId)) {
+    if (room && targetSocketId && room.users.has(socket.id) && room.users.has(targetSocketId)) {
       socket.to(targetSocketId).emit('webrtc-ice-candidate', {
         candidate,
         senderSocketId: socket.id
       });
+    } else {
+      socket.to(state.currentRoom).emit('webrtc-ice-candidate', {
+        candidate,
+        senderSocketId: socket.id
+      });
     }
+  });
+
+  // Peer Ready Signaling (Triggers other peers in room to create an offer)
+  socket.on('peer-ready', (data) => {
+    const roomId = data?.roomId || state.currentRoom;
+    if (!roomId) return;
+    socket.to(roomId).emit('peer-ready', {
+      initiatorId: socket.id,
+      user: data?.user || { name: state.currentUser?.name || 'Peer', socketId: socket.id }
+    });
   });
 
   // Cinema Face-to-Face Cam & Mic Request Relay

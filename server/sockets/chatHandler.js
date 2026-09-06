@@ -425,6 +425,14 @@ function registerChatHandlers(io, socket, state) {
     });
   });
 
+  socket.on('call-ended', (data) => {
+    const targetRoom = data?.to || state.currentRoom;
+    if (!targetRoom) return;
+    socket.to(targetRoom).emit('call-ended', {
+      fromSocketId: socket.id
+    });
+  });
+
   // Video / Player 404 / Stream Playback Error Event
   socket.on('player-playback-error', ({ roomId, movieTitle, url, reason }) => {
     const targetRoom = (roomId || state.currentRoom || '').toLowerCase().trim();
