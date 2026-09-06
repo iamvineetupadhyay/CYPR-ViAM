@@ -76,11 +76,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, i
         return;
       }
 
-      setSuccessMsg(data.message || `Verification code sent to ${email}`);
-      if (data.simulatedOtp) {
-        setOtpCode(data.simulatedOtp);
-        setSuccessMsg(`OTP sent to ${email} (Auto-filled: ${data.simulatedOtp})`);
-      }
+      setSuccessMsg(data.message || `Verification code sent to ${email}. Please check your inbox.`);
     } catch (err) {
       setSendingOtp(false);
       setError('Network error while requesting OTP.');

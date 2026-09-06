@@ -32,7 +32,6 @@ async function sendOtp(req, res) {
   res.json({
     success: true,
     message: `Verification OTP sent to ${cleanEmail}`,
-    simulatedOtp: otp,
     emailPreviewUrl
   });
 }
