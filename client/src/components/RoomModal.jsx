@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Lock, Globe, Copy, Check, RefreshCw, Share2, ArrowRight, Users, X, LogIn, Plus, Sparkles, Key } from 'lucide-react';
+import { getT } from '../utils/themeTokens';
 
 function generateRandomRoomCode() {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -10,7 +11,10 @@ function generateRandomRoomCode() {
   return `viam-${suffix}`;
 }
 
-export default function RoomModal({ isOpen, onClose, onJoinRoom, defaultRoomId, initialMode = 'create', userAccount }) {
+export default function RoomModal({ isOpen, onClose, onJoinRoom, defaultRoomId, initialMode = 'create', userAccount, theme }) {
+  const currentTheme = theme || (typeof document !== 'undefined' && document.body.classList.contains('light-theme') ? 'light' : 'dark');
+  const T = getT(currentTheme);
+
   const [userName, setUserName] = useState(() => userAccount?.name || localStorage.getItem('cypr_user_name') || '');
   const [mode, setMode] = useState(initialMode || (defaultRoomId ? 'join' : 'create'));
   const [roomType, setRoomType] = useState('private'); // 'private' | 'public'
@@ -94,29 +98,30 @@ export default function RoomModal({ isOpen, onClose, onJoinRoom, defaultRoomId, 
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 9999,
-      background: 'rgba(5, 5, 7, 0.88)', backdropFilter: 'blur(16px)',
+      background: T.isLight ? 'rgba(30, 24, 18, 0.6)' : 'rgba(5, 5, 7, 0.88)', backdropFilter: 'blur(16px)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px'
     }}>
       <div style={{
         maxWidth: '460px', width: '100%',
-        background: '#09090b', border: '1.5px solid rgba(255, 85, 0, 0.3)',
+        background: T.surfaceModal,
+        border: `1.5px solid ${T.isLight ? 'rgba(255,85,0,0.35)' : 'rgba(255, 85, 0, 0.3)'}`,
         borderRadius: '22px', padding: '28px',
-        boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.95), 0 0 30px rgba(255,85,0,0.15)',
-        position: 'relative', color: '#f4f4f5'
+        boxShadow: T.isLight ? '0 25px 60px -12px rgba(0, 0, 0, 0.18), 0 0 30px rgba(255,85,0,0.12)' : '0 25px 60px -12px rgba(0, 0, 0, 0.95), 0 0 30px rgba(255,85,0,0.15)',
+        position: 'relative', color: T.textPrimary
       }}>
         {onClose && (
           <button
             onClick={onClose}
             style={{
               position: 'absolute', top: '18px', right: '18px',
-              background: '#141417', border: '1px solid #27272a',
-              color: '#71717a', borderRadius: '50%',
+              background: T.surface1, border: `1px solid ${T.border}`,
+              color: T.textMuted1, borderRadius: '50%',
               width: '32px', height: '32px', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               transition: 'all 0.15s'
             }}
-            onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#ff5500'; }}
-            onMouseLeave={e => { e.currentTarget.style.color = '#71717a'; e.currentTarget.style.borderColor = '#27272a'; }}
+            onMouseEnter={e => { e.currentTarget.style.color = T.textPrimary; e.currentTarget.style.borderColor = '#ff5500'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = T.textMuted1; e.currentTarget.style.borderColor = T.border; }}
           >
             <X size={16} />
           </button>
@@ -125,17 +130,17 @@ export default function RoomModal({ isOpen, onClose, onJoinRoom, defaultRoomId, 
         {/* Minimalist Logo & Title */}
         <div style={{ textAlign: 'center', marginBottom: '18px' }}>
           <img src="/viam_logo.png" alt="VIAM" style={{ height: '48px', width: 'auto', marginBottom: '8px', objectFit: 'contain' }} />
-          <h2 style={{ fontSize: '19px', fontWeight: '800', color: '#ffffff', margin: 0, letterSpacing: '-0.3px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+          <h2 style={{ fontSize: '19px', fontWeight: '800', color: T.textPrimary, margin: 0, letterSpacing: '-0.3px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
             {mode === 'create' ? <Sparkles size={18} color="#ff7733" /> : <Key size={18} color="#ff7733" />}
             <span>{mode === 'create' ? 'Create Co-Watch Lounge' : 'Join Existing Lounge'}</span>
           </h2>
-          <p style={{ fontSize: '12px', color: '#a1a1aa', margin: '4px 0 0 0' }}>
+          <p style={{ fontSize: '12px', color: T.textMuted2, margin: '4px 0 0 0' }}>
             {mode === 'create' ? 'Configure your private room & invite your partner' : 'Enter room code to connect in real-time'}
           </p>
         </div>
 
         {/* Mode Selector Tabs (Create vs Join) */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', background: '#141417', padding: '5px', borderRadius: '12px', border: '1px solid #27272a', marginBottom: '18px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', background: T.surface1, padding: '5px', borderRadius: '12px', border: `1px solid ${T.border}`, marginBottom: '18px' }}>
           <button
             type="button"
             onClick={() => {
@@ -145,7 +150,7 @@ export default function RoomModal({ isOpen, onClose, onJoinRoom, defaultRoomId, 
             style={{
               height: '38px', borderRadius: '8px', border: 'none', cursor: 'pointer',
               background: mode === 'create' ? '#ff5500' : 'transparent',
-              color: '#fff',
+              color: mode === 'create' ? '#fff' : T.textMuted1,
               fontSize: '13px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
               boxShadow: mode === 'create' ? '0 0 16px rgba(255,85,0,0.4)' : 'none',
               transition: 'all 0.15s'
@@ -159,7 +164,7 @@ export default function RoomModal({ isOpen, onClose, onJoinRoom, defaultRoomId, 
             style={{
               height: '38px', borderRadius: '8px', border: 'none', cursor: 'pointer',
               background: mode === 'join' ? '#ff5500' : 'transparent',
-              color: '#fff',
+              color: mode === 'join' ? '#fff' : T.textMuted1,
               fontSize: '13px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
               boxShadow: mode === 'join' ? '0 0 16px rgba(255,85,0,0.4)' : 'none',
               transition: 'all 0.15s'
@@ -172,7 +177,7 @@ export default function RoomModal({ isOpen, onClose, onJoinRoom, defaultRoomId, 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {/* Display Name Input */}
           <div>
-            <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: T.textMuted2, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
               Your Name
             </label>
             <input
@@ -182,13 +187,13 @@ export default function RoomModal({ isOpen, onClose, onJoinRoom, defaultRoomId, 
               value={userName}
               onChange={(e) => setUserName(e.target.value)}
               style={{
-                width: '100%', height: '42px', background: '#141417',
-                border: '1px solid #27272a', borderRadius: '10px',
-                padding: '0 14px', fontSize: '14px', color: '#fff', outline: 'none',
+                width: '100%', height: '42px', background: T.inputBg,
+                border: `1px solid ${T.border}`, borderRadius: '10px',
+                padding: '0 14px', fontSize: '14px', color: T.textPrimary, outline: 'none',
                 transition: 'border-color 0.2s'
               }}
               onFocus={e => e.currentTarget.style.borderColor = '#ff5500'}
-              onBlur={e => e.currentTarget.style.borderColor = '#27272a'}
+              onBlur={e => e.currentTarget.style.borderColor = T.border}
               autoFocus
             />
           </div>
@@ -196,17 +201,17 @@ export default function RoomModal({ isOpen, onClose, onJoinRoom, defaultRoomId, 
           {/* Room Access Mode Selector — Only in Create Mode */}
           {mode === 'create' && (
             <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: T.textMuted2, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
                 Access Type
               </label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', background: '#141417', padding: '4px', borderRadius: '10px', border: '1px solid #27272a' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', background: T.surface1, padding: '4px', borderRadius: '10px', border: `1px solid ${T.border}` }}>
                 <button
                   type="button"
                   onClick={() => setRoomType('private')}
                   style={{
                     height: '36px', borderRadius: '7px', border: 'none', cursor: 'pointer',
-                    background: roomType === 'private' ? '#27272a' : 'transparent',
-                    color: roomType === 'private' ? '#fff' : '#a1a1aa',
+                    background: roomType === 'private' ? T.surface3 : 'transparent',
+                    color: roomType === 'private' ? T.textPrimary : T.textMuted1,
                     fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                     transition: 'all 0.15s'
                   }}
@@ -218,8 +223,8 @@ export default function RoomModal({ isOpen, onClose, onJoinRoom, defaultRoomId, 
                   onClick={() => setRoomType('public')}
                   style={{
                     height: '36px', borderRadius: '7px', border: 'none', cursor: 'pointer',
-                    background: roomType === 'public' ? '#27272a' : 'transparent',
-                    color: roomType === 'public' ? '#fff' : '#a1a1aa',
+                    background: roomType === 'public' ? T.surface3 : 'transparent',
+                    color: roomType === 'public' ? T.textPrimary : T.textMuted1,
                     fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                     transition: 'all 0.15s'
                   }}
@@ -233,7 +238,7 @@ export default function RoomModal({ isOpen, onClose, onJoinRoom, defaultRoomId, 
           {/* Capacity Selector (Private Mode) — Only in Create Mode */}
           {mode === 'create' && roomType === 'private' && (
             <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: T.textMuted2, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
                 Max Capacity
               </label>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
@@ -244,9 +249,9 @@ export default function RoomModal({ isOpen, onClose, onJoinRoom, defaultRoomId, 
                     onClick={() => setMaxCapacity(num)}
                     style={{
                       height: '38px', borderRadius: '8px', cursor: 'pointer',
-                      background: maxCapacity === num ? '#ff5500' : '#141417',
-                      border: maxCapacity === num ? '1px solid #ff5500' : '1px solid #27272a',
-                      color: '#fff', fontSize: '13px', fontWeight: '700',
+                      background: maxCapacity === num ? '#ff5500' : T.surface1,
+                      border: maxCapacity === num ? '1px solid #ff5500' : `1px solid ${T.border}`,
+                      color: maxCapacity === num ? '#fff' : T.textPrimary, fontSize: '13px', fontWeight: '700',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
                       transition: 'all 0.15s'
                     }}
@@ -261,7 +266,7 @@ export default function RoomModal({ isOpen, onClose, onJoinRoom, defaultRoomId, 
           {/* Room Code Field */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-              <label style={{ fontSize: '11px', fontWeight: '600', color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <label style={{ fontSize: '11px', fontWeight: '600', color: T.textMuted2, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Room Code
               </label>
               {mode === 'create' && (
@@ -288,8 +293,8 @@ export default function RoomModal({ isOpen, onClose, onJoinRoom, defaultRoomId, 
               onChange={handleCodeChange}
               readOnly={mode === 'join' && !!defaultRoomId}
               style={{
-                width: '100%', height: '42px', background: '#141417',
-                border: '1px solid #27272a', borderRadius: '10px',
+                width: '100%', height: '42px', background: T.inputBg,
+                border: `1px solid ${T.border}`, borderRadius: '10px',
                 padding: '0 14px', fontSize: '13px', color: '#ff5500', outline: 'none',
                 fontFamily: 'monospace', fontWeight: '700', letterSpacing: '1px',
                 opacity: mode === 'join' && !!defaultRoomId ? 0.9 : 1
@@ -301,10 +306,11 @@ export default function RoomModal({ isOpen, onClose, onJoinRoom, defaultRoomId, 
           {mode === 'create' && (
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              background: 'rgba(255,85,0,0.08)', border: '1px solid rgba(255,85,0,0.2)',
+              background: T.isLight ? 'rgba(255,85,0,0.06)' : 'rgba(255,85,0,0.08)',
+              border: '1px solid rgba(255,85,0,0.2)',
               borderRadius: '10px', padding: '8px 12px', fontSize: '12px'
             }}>
-              <span style={{ color: '#a1a1aa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '280px' }}>
+              <span style={{ color: T.textMuted1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '280px' }}>
                 {shareableLink}
               </span>
               <button
@@ -326,7 +332,7 @@ export default function RoomModal({ isOpen, onClose, onJoinRoom, defaultRoomId, 
           {/* Optional Room Secret PIN / Passcode */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-              <label style={{ fontSize: '11px', fontWeight: '600', color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <label style={{ fontSize: '11px', fontWeight: '600', color: T.textMuted2, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Room Passcode / PIN {mode === 'create' ? '(Optional Security)' : '(If Locked)'}
               </label>
               <Lock size={12} color="#ff5500" />
@@ -338,13 +344,13 @@ export default function RoomModal({ isOpen, onClose, onJoinRoom, defaultRoomId, 
               value={passcode}
               onChange={(e) => setPasscode(e.target.value)}
               style={{
-                width: '100%', height: '42px', background: '#141417',
-                border: '1px solid #27272a', borderRadius: '10px',
-                padding: '0 14px', fontSize: '13px', color: '#fff', outline: 'none',
+                width: '100%', height: '42px', background: T.inputBg,
+                border: `1px solid ${T.border}`, borderRadius: '10px',
+                padding: '0 14px', fontSize: '13px', color: T.textPrimary, outline: 'none',
                 fontFamily: 'monospace', letterSpacing: '2px'
               }}
               onFocus={e => e.currentTarget.style.borderColor = '#ff5500'}
-              onBlur={e => e.currentTarget.style.borderColor = '#27272a'}
+              onBlur={e => e.currentTarget.style.borderColor = T.border}
             />
           </div>
 

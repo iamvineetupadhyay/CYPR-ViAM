@@ -1,4 +1,5 @@
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -30,8 +31,8 @@ app.use(helmet({
 
 // CORS and Body Parsers
 app.use(cors());
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '25mb' }));
+app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 
 // General Rate Limiter for all API routes
 app.use('/api/', generalApiLimiter);
@@ -58,7 +59,6 @@ app.get('/api/health', (req, res) => {
 });
 
 // Serve frontend build static files in Production / Docker container
-const path = require('path');
 const fs = require('fs');
 
 const publicPath = path.join(__dirname, 'public');
@@ -84,7 +84,7 @@ const io = new Server(server, {
     origin: '*',
     methods: ['GET', 'POST']
   },
-  maxHttpBufferSize: 1e7 // 10MB limit for image attachments
+  maxHttpBufferSize: 2.5e7 // 25MB limit for attachments, images & media
 });
 
 // Socket Authentication Middleware

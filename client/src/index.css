@@ -1,30 +1,257 @@
+/* ============================================================
+   CYPR ViAM — DESIGN TOKEN SYSTEM
+   Dark mode (default) tokens in :root
+   Light mode overrides in body.light-theme
+   All pages reference var(--token) for consistent theming
+   ============================================================ */
 :root {
+  /* ── Accent Colors (constant across themes) ── */
+  --accent-orange: #ff5500;
+  --accent-orange-glow: rgba(255, 85, 0, 0.55);
+  --accent-orange-hover: #ff7733;
+  --accent-violet: #a855f7;
+  --accent-violet-glow: rgba(168, 85, 247, 0.45);
+  --accent-emerald: #22c55e;
+  --accent-emerald-glow: rgba(34, 197, 94, 0.45);
+  --accent-cyan: #00f5d4;
+  --accent-amber: #eab308;
+  --accent-sky: #38bdf8;
+
+  /* Legacy vars (kept for backward compat) */
   --bg-dark: #0b0806;
   --bg-surface: #0e0a08;
   --bg-card: rgba(22, 17, 13, 0.85);
   --bg-glass: rgba(28, 22, 17, 0.8);
   --border-glass: rgba(255, 255, 255, 0.12);
   --border-glow: rgba(255, 85, 0, 0.45);
-
   --accent-rose: #ff5500;
   --accent-rose-glow: rgba(255, 85, 0, 0.55);
-  --accent-violet: #8000ff;
-  --accent-cyan: #00f5d4;
-  --accent-amber: #ffd166;
-  --accent-emerald: #10b981;
-
   --text-main: #f8fafc;
   --text-muted: #94a3b8;
   --text-sub: #64748b;
-
   --radius-lg: 20px;
   --radius-md: 14px;
   --radius-sm: 8px;
-
   --transition-smooth: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ── PAGE BACKGROUNDS ── */
+  --page-bg: #07080c;
+  --page-bg-alt: #0b0c14;
+
+  /* ── SURFACES ── */
+  --surface-1: rgba(10, 12, 18, 0.85);          /* Header / top bar */
+  --surface-2: rgba(14, 16, 25, 0.95);           /* Cards */
+  --surface-3: rgba(17, 20, 30, 0.75);           /* Stations / tiles */
+  --surface-4: rgba(17, 20, 30, 0.45);           /* Dim tiles */
+  --surface-hero: linear-gradient(135deg, rgba(22,25,38,0.85) 0%, rgba(13,14,22,0.95) 100%);
+  --surface-modal: rgba(5, 5, 8, 0.95);          /* Modal overlays */
+  --surface-sidebar: #0d0e1a;                    /* AI Sidebar */
+  --surface-input: rgba(255, 255, 255, 0.05);    /* Input fields */
+  --surface-right-card: rgba(15, 17, 26, 0.9);   /* Theater state card */
+
+  /* ── BORDERS ── */
+  --border-1: rgba(255, 255, 255, 0.06);         /* Faintest borders */
+  --border-2: rgba(255, 255, 255, 0.08);         /* Subtle */
+  --border-3: rgba(255, 255, 255, 0.09);         /* Default */
+  --border-4: rgba(255, 255, 255, 0.12);         /* Visible */
+  --border-input: rgba(255, 255, 255, 0.1);
+  --border-divider: rgba(255, 255, 255, 0.07);   /* Card dividers */
+
+  /* ── TEXT ── */
+  --text-primary: #ffffff;
+  --text-secondary: #f4f4f5;
+  --text-muted-1: #94a3b8;                       /* Body / description */
+  --text-muted-2: #71717a;                       /* Labels */
+  --text-muted-3: #64748b;                       /* Faint / subtitles */
+  --text-muted-4: #a1a1aa;                       /* Placeholder-ish */
+
+  /* ── HEADER ── */
+  --header-bg: rgba(10, 12, 18, 0.85);
+  --header-border: rgba(255, 255, 255, 0.06);
+
+  /* ── PILLS / NAV BUTTONS ── */
+  --pill-bg: rgba(255, 255, 255, 0.04);
+  --pill-border: rgba(255, 255, 255, 0.09);
+  --pill-text: #f4f4f5;
+
+  /* ── INPUTS ── */
+  --input-bg: rgba(255, 255, 255, 0.05);
+  --input-border: rgba(255, 255, 255, 0.1);
+  --input-text: #ffffff;
+  --input-placeholder: #71717a;
+  --input-focus-border: rgba(255, 85, 0, 0.5);
+
+  /* ── MESSAGE BUBBLES ── */
+  --bubble-own-bg: rgba(255, 85, 0, 0.18);
+  --bubble-own-border: rgba(255, 85, 0, 0.3);
+  --bubble-own-text: #fff;
+  --bubble-other-bg: rgba(255, 255, 255, 0.05);
+  --bubble-other-border: rgba(255, 255, 255, 0.08);
+  --bubble-other-text: #f4f4f5;
+
+  /* ── AVATAR ── */
+  --avatar-ring: #0d0e16;
+
+  /* ── SIDEBAR (AI Page) ── */
+  --sidebar-bg: #0d0e1a;
+  --sidebar-border: rgba(255, 255, 255, 0.06);
+  --sidebar-session-bg: rgba(255, 255, 255, 0.04);
+  --sidebar-session-active: rgba(255, 85, 0, 0.15);
+  --sidebar-session-border: rgba(255, 85, 0, 0.35);
+
+  /* ── CONNECT PAGE ── */
+  --connect-bg-from: #0a0a14;
+  --connect-bg-to: #050508;
+  --connect-card-bg: rgba(15, 16, 25, 0.95);
+
+  /* ── PROFILE PAGE ── */
+  --profile-bg: #07080c;
+  --profile-card-bg: rgba(14, 16, 25, 0.95);
+
+  /* ── CINEMA PAGE ── */
+  --cinema-bg: #0b0806;
+  --cinema-toolbar-bg: rgba(9, 10, 15, 0.96);
+  --cinema-sidebar-bg: rgba(9, 10, 15, 0.98);
+
+  /* ── CHAT PAGE ── */
+  --chat-bg: #07080c;
+  --chat-sidebar-bg: rgba(9, 10, 16, 0.98);
+  --chat-panel-bg: rgba(7, 8, 12, 0.95);
+
+  /* ── SCROLLBAR ── */
+  --scrollbar-track: rgba(255, 255, 255, 0.03);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.12);
+  --scrollbar-thumb-hover: rgba(255, 85, 0, 0.4);
 }
 
-/* E2EE Security Badge */
+/* ============================================================
+   LIGHT THEME — Warm Cream / Parchment Palette
+   Applied via: body.light-theme (toggled from App.jsx)
+   ============================================================ */
+body.light-theme {
+  /* ── PAGE BACKGROUNDS ── */
+  --page-bg: #f7f4ef;
+  --page-bg-alt: #f0ebe0;
+
+  /* ── SURFACES ── */
+  --surface-1: rgba(247, 242, 234, 0.95);
+  --surface-2: rgba(255, 255, 255, 0.97);
+  --surface-3: rgba(255, 255, 255, 0.85);
+  --surface-4: rgba(255, 255, 255, 0.65);
+  --surface-hero: linear-gradient(135deg, rgba(255,255,255,0.96) 0%, rgba(250,246,240,0.98) 100%);
+  --surface-modal: rgba(245, 240, 232, 0.97);
+  --surface-sidebar: #f0ebe0;
+  --surface-input: rgba(255, 255, 255, 0.9);
+  --surface-right-card: rgba(255, 255, 255, 0.92);
+
+  /* ── BORDERS ── */
+  --border-1: rgba(0, 0, 0, 0.05);
+  --border-2: rgba(0, 0, 0, 0.07);
+  --border-3: rgba(0, 0, 0, 0.09);
+  --border-4: rgba(0, 0, 0, 0.12);
+  --border-input: rgba(0, 0, 0, 0.15);
+  --border-divider: rgba(0, 0, 0, 0.08);
+
+  /* ── TEXT ── */
+  --text-primary: #1a1208;
+  --text-secondary: #2a1f14;
+  --text-muted-1: #6b5a44;
+  --text-muted-2: #8a7060;
+  --text-muted-3: #8a7060;
+  --text-muted-4: #7a6a54;
+
+  /* ── HEADER ── */
+  --header-bg: rgba(247, 242, 234, 0.95);
+  --header-border: rgba(0, 0, 0, 0.08);
+
+  /* ── PILLS / NAV BUTTONS ── */
+  --pill-bg: rgba(0, 0, 0, 0.05);
+  --pill-border: rgba(0, 0, 0, 0.1);
+  --pill-text: #2a1f14;
+
+  /* ── INPUTS ── */
+  --input-bg: rgba(255, 255, 255, 0.9);
+  --input-border: rgba(0, 0, 0, 0.15);
+  --input-text: #1a1208;
+  --input-placeholder: #8a7060;
+  --input-focus-border: rgba(255, 85, 0, 0.45);
+
+  /* ── MESSAGE BUBBLES ── */
+  --bubble-own-bg: rgba(255, 85, 0, 0.12);
+  --bubble-own-border: rgba(255, 85, 0, 0.22);
+  --bubble-own-text: #2a0e00;
+  --bubble-other-bg: rgba(255, 255, 255, 0.92);
+  --bubble-other-border: rgba(0, 0, 0, 0.08);
+  --bubble-other-text: #1a1208;
+
+  /* ── AVATAR ── */
+  --avatar-ring: #f0ebe0;
+
+  /* ── SIDEBAR (AI Page) ── */
+  --sidebar-bg: #ede7db;
+  --sidebar-border: rgba(0, 0, 0, 0.09);
+  --sidebar-session-bg: rgba(0, 0, 0, 0.04);
+  --sidebar-session-active: rgba(255, 85, 0, 0.1);
+  --sidebar-session-border: rgba(255, 85, 0, 0.3);
+
+  /* ── CONNECT PAGE ── */
+  --connect-bg-from: #f7f4ef;
+  --connect-bg-to: #ebe3d6;
+  --connect-card-bg: rgba(255, 255, 255, 0.96);
+
+  /* ── PROFILE PAGE ── */
+  --profile-bg: #f7f4ef;
+  --profile-card-bg: rgba(255, 255, 255, 0.96);
+
+  /* ── CINEMA PAGE ── */
+  --cinema-bg: #f0ebe0;
+  --cinema-toolbar-bg: rgba(247, 242, 234, 0.97);
+  --cinema-sidebar-bg: rgba(243, 238, 228, 0.98);
+
+  /* ── CHAT PAGE ── */
+  --chat-bg: #f7f4ef;
+  --chat-sidebar-bg: rgba(240, 235, 224, 0.98);
+  --chat-panel-bg: rgba(247, 243, 235, 0.97);
+
+  /* ── SCROLLBAR ── */
+  --scrollbar-track: rgba(0, 0, 0, 0.04);
+  --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+  --scrollbar-thumb-hover: rgba(255, 85, 0, 0.35);
+
+  /* ── Legacy overrides ── */
+  --bg-dark: #f0ebe0;
+  --bg-surface: #f5f1eb;
+  --bg-card: rgba(255, 252, 248, 0.92);
+  --text-main: #1a1208;
+  --text-muted: #6b5a44;
+  --text-sub: #8a7060;
+}
+
+/* Global transition for smooth theme switching */
+body {
+  transition: background-color 0.4s ease, color 0.35s ease;
+}
+
+body.light-theme {
+  background-color: var(--page-bg);
+  color: var(--text-primary);
+}
+
+
+
+/* Page wrapper class — smooth transition on theme switch */
+.app-page-dark {
+  transition: background 0.4s ease, color 0.35s ease;
+}
+
+/* CinemaPage nav toolbar light-mode override */
+body.light-theme .cinema-nav-toolbar {
+  background: rgba(247, 242, 234, 0.96) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+
+
 .e2ee-badge {
   display: inline-flex;
   align-items: center;
@@ -98,6 +325,23 @@ h5,
 }
 
 /* Background Atmosphere */
+.whatsapp-chat-bg {
+  background-color: #0b0c13;
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(255, 85, 0, 0.08) 0%, transparent 60%),
+    radial-gradient(circle at 100% 100%, rgba(37, 211, 102, 0.05) 0%, transparent 50%),
+    radial-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 24px 24px;
+}
+
+body.light-theme .whatsapp-chat-bg {
+  background-color: #f7f4ef !important;
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(255, 120, 0, 0.05) 0%, transparent 60%),
+    radial-gradient(circle at 100% 100%, rgba(37, 211, 102, 0.04) 0%, transparent 50%),
+    radial-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px) !important;
+  background-size: 100% 100%, 100% 100%, 24px 24px !important;
+}
 .app-atmosphere {
   position: fixed;
   top: 0;
@@ -3061,6 +3305,129 @@ h5,
   }
 }
 
+.mobile-only-icons {
+  display: none !important;
+}
+
+/* Mobile & Touch Devices (< 768px) */
+@media (max-width: 768px) {
+  body, html {
+    overflow-x: hidden;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobile-back-btn {
+    display: flex !important;
+  }
+
+  .mobile-only-icons {
+    display: flex !important;
+  }
+
+  .mobile-hidden {
+    display: none !important;
+  }
+
+  .desktop-only-pill,
+  .desktop-only-row {
+    display: none !important;
+  }
+
+  .mobile-text-hidden,
+  .cinema-pill-text {
+    display: none !important;
+  }
+
+  .cinema-header-pill {
+    padding: 0 10px !important;
+    gap: 0 !important;
+    border-radius: 20px !important;
+    height: 36px !important;
+    justify-content: center !important;
+  }
+
+  .cinema-nav-toolbar {
+    padding: 0 8px !important;
+    gap: 6px !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+  }
+
+  .cinema-nav-toolbar::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .viam-logo-animated {
+    height: 42px !important;
+  }
+
+  .cinema-control-row {
+    padding: 6px 8px !important;
+    gap: 4px !important;
+  }
+
+  .volume-slider {
+    width: 50px !important;
+  }
+
+  .time-display {
+    font-size: 10px !important;
+  }
+
+  .movie-title-banner {
+    display: none !important;
+  }
+
+  .source-picker-modal {
+    width: 95vw !important;
+    max-height: 90vh !important;
+    border-radius: 16px !important;
+    padding: 12px !important;
+  }
+
+  .source-picker-grid {
+    grid-template-columns: repeat(auto-fill, minmax(125px, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .cinema-mobile-chat-overlay {
+    position: absolute !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    z-index: 85 !important;
+    background: #09090b !important;
+  }
+
+  .chat-page-sidebar {
+    width: 100% !important;
+    flex: 1 !important;
+  }
+
+  .chat-page-main {
+    width: 100% !important;
+    flex: 1 !important;
+  }
+
+  .home-hero-title {
+    font-size: 28px !important;
+  }
+
+  .home-cards-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .viam-ai-companion-drawer {
+    width: calc(100vw - 16px) !important;
+    right: 8px !important;
+    top: 56px !important;
+    height: calc(100vh - 68px) !important;
+    z-index: 95 !important;
+  }
+}
+
 /* Full-Screen Emoji Cannon Fireworks Animation */
 .fullscreen-emoji-particle {
   position: fixed;
@@ -3135,4 +3502,199 @@ h5,
 
 .viam-logo-animated-lg {
   height: 76px;
+}
+
+/* ==========================================================================
+   LIGHT THEME — Mature Cream/Latte Palette
+   Applied via body.light-theme class toggle from App.jsx theme state
+   ========================================================================== */
+
+body {
+  transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+body.light-theme {
+  --bg-dark: #f0ebe3;
+  --bg-surface: #f5f1eb;
+  --bg-card: rgba(255, 252, 248, 0.92);
+  --bg-glass: rgba(255, 253, 249, 0.85);
+  --border-glass: rgba(0, 0, 0, 0.1);
+  --border-glow: rgba(255, 85, 0, 0.35);
+  --text-main: #1a1208;
+  --text-muted: #5c4a36;
+  --text-sub: #8a7060;
+
+  background-color: #f0ebe3 !important;
+  color: #1a1208 !important;
+}
+
+/* Page wrappers */
+body.light-theme > * > div[style],
+body.light-theme [class*="page"] {
+  color: #1a1208;
+}
+
+/* Headers & Navigation Bars */
+body.light-theme header {
+  background: rgba(245, 239, 228, 0.92) !important;
+  border-bottom-color: rgba(0, 0, 0, 0.09) !important;
+  backdrop-filter: blur(20px);
+}
+
+/* Card surfaces & glass panels */
+body.light-theme [style*="background: rgba(10,"] ,
+body.light-theme [style*="background: rgba(14,"] ,
+body.light-theme [style*="background: #07080c"],
+body.light-theme [style*="background: #0b0806"],
+body.light-theme [style*="background: #0e0a08"],
+body.light-theme [style*="background: #0d0d11"] {
+  background: rgba(255, 252, 248, 0.97) !important;
+  color: #1a1208 !important;
+}
+
+/* Pill Buttons in light mode */
+body.light-theme .cinema-header-pill {
+  background: rgba(0, 0, 0, 0.05) !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  color: #2a1f14 !important;
+}
+body.light-theme .cinema-header-pill:hover {
+  background: rgba(255, 85, 0, 0.1) !important;
+  border-color: rgba(255, 85, 0, 0.35) !important;
+  color: #1a0f06 !important;
+}
+
+/* Text colors in light mode */
+body.light-theme p,
+body.light-theme span,
+body.light-theme div,
+body.light-theme h1,
+body.light-theme h2,
+body.light-theme h3,
+body.light-theme h4,
+body.light-theme label {
+  color: inherit;
+}
+
+/* Message bubbles */
+body.light-theme [style*="background: rgba(255, 85, 0"] {
+  /* keep accent color intact */
+}
+
+/* AI Sidebar in light mode */
+body.light-theme [class*="ai-sidebar"],
+body.light-theme [class*="sidebar"] {
+  background: rgba(240, 232, 220, 0.98) !important;
+  border-right-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Input fields */
+body.light-theme input,
+body.light-theme textarea {
+  background: rgba(255, 255, 255, 0.85) !important;
+  color: #1a1208 !important;
+  border-color: rgba(0, 0, 0, 0.15) !important;
+}
+body.light-theme input::placeholder,
+body.light-theme textarea::placeholder {
+  color: #8a7060 !important;
+}
+
+/* Scrollbar */
+body.light-theme ::-webkit-scrollbar-track {
+  background: rgba(220, 210, 195, 0.5);
+}
+body.light-theme ::-webkit-scrollbar-thumb {
+  background: rgba(180, 160, 130, 0.6);
+}
+body.light-theme ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 85, 0, 0.4);
+}
+
+/* Chat messages light mode */
+body.light-theme .chat-msg-own {
+  background: rgba(255, 85, 0, 0.15) !important;
+  border-color: rgba(255, 85, 0, 0.25) !important;
+  color: #2a1000 !important;
+}
+body.light-theme .chat-msg-other {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  color: #1a1208 !important;
+}
+
+/* Modals & Overlays */
+body.light-theme [style*="rgba(5, 5, 8, 0.92)"],
+body.light-theme [style*="rgba(0, 0, 0, 0.8)"] {
+  background: rgba(240, 232, 220, 0.97) !important;
+}
+
+/* Glass cards and panels */
+body.light-theme [style*="1px solid rgba(255, 255, 255, 0.06)"],
+body.light-theme [style*="1px solid rgba(255, 255, 255, 0.08)"],
+body.light-theme [style*="1px solid rgba(255, 255, 255, 0.1)"] {
+  border-color: rgba(0, 0, 0, 0.09) !important;
+}
+
+/* Muted text */
+body.light-theme [style*="color: #a1a1aa"],
+body.light-theme [style*="color: #71717a"],
+body.light-theme [style*="color: #64748b"] {
+  color: #8a7060 !important;
+}
+
+/* Background gradient pages - Home, Cinema etc */
+body.light-theme > * {
+  --page-bg: #f0ebe3;
+}
+
+/* Override the dark radial-gradient page backgrounds */
+body.light-theme [style*="background: #07080c"],
+body.light-theme [style*="background: #0a0a0f"],
+body.light-theme [style*="background: #08080e"] {
+  background: #f0ebe3 !important;
+}
+
+/* AI Companion light mode surface */
+body.light-theme .ai-message-block {
+  background: rgba(255, 255, 255, 0.88) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  color: #1a1208 !important;
+}
+
+/* Theme toggle smooth animation */
+body.light-theme * {
+  transition: background-color 0.35s ease, border-color 0.35s ease, color 0.25s ease;
+}
+
+/* Accent preservation - keep orange/purple accents visible in light mode */
+body.light-theme [style*="color: #ff5500"],
+body.light-theme [style*="color: #ff7733"],
+body.light-theme [style*="color: #ff661a"] {
+  color: #e04400 !important;
+}
+
+/* Connect Page light mode */
+body.light-theme .connect-page-bg {
+  background: linear-gradient(135deg, #f5ede0 0%, #ede4d4 50%, #e8ddd0 100%) !important;
+}
+
+/* Source Picker & Modal backdrop in light mode */
+body.light-theme [style*="rgba(0, 0, 0, 0.7)"],
+body.light-theme [style*="rgba(0, 0, 0, 0.85)"],
+body.light-theme [style*="rgba(0, 0, 0, 0.92)"] {
+  background: rgba(50, 35, 20, 0.75) !important;
+}
+
+/* Light theme notification badge */
+body.light-theme .knock-pending-overlay {
+  background: rgba(240, 232, 220, 0.97) !important;
+  color: #1a1208 !important;
+}
+
+/* Voice assistant feedback toast in light mode */
+body.light-theme [style*="rgba(14, 18, 30, 0.95)"] {
+  background: rgba(255, 252, 248, 0.97) !important;
+  border-color: rgba(168, 85, 247, 0.35) !important;
+  color: #1a1208 !important;
 }

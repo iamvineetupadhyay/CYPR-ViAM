@@ -13,6 +13,7 @@ import {
   Tv,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   SkipForward,
   Layers,
   Settings,
@@ -88,9 +89,10 @@ export default function CinemaPlayer({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
 
-  // Settings, Subtitles, Quality & Audio Boost States
+  // Settings, Subtitles, Quality, Audio Boost & Server Dropdown States
   const [isSubtitleDrawerOpen, setIsSubtitleDrawerOpen] = useState(false);
   const [isSettingsDrawerOpen, setIsSettingsDrawerOpen] = useState(false);
+  const [isServerDropdownOpen, setIsServerDropdownOpen] = useState(false);
   const [subtitlesEnabled, setSubtitlesEnabled] = useState(false);
   const [subtitleCues, setSubtitleCues] = useState([]);
   const [currentSubtitleText, setCurrentSubtitleText] = useState('');
@@ -103,6 +105,25 @@ export default function CinemaPlayer({
   const [audioBoost, setAudioBoost] = useState(1); // 1 = 100%, 1.5 = 150%, 2 = 200%
   const [selectedQuality, setSelectedQuality] = useState('Auto');
   const [availableQualities, setAvailableQualities] = useState(['Auto', '1080p', '720p', '480p']);
+
+  // Real-time smooth timer loop for YouTube and Video time sync on custom scrubber
+  useEffect(() => {
+    if (!isPlaying) return;
+
+    const timer = setInterval(() => {
+      if (mediaState.sourceType === 'youtube' && ytPlayerRef.current?.getCurrentTime) {
+        const cur = ytPlayerRef.current.getCurrentTime() || 0;
+        const dur = ytPlayerRef.current.getDuration() || 0;
+        setCurrentTime(cur);
+        if (dur && dur > 0) setDuration(dur);
+      } else if (videoRef.current) {
+        setCurrentTime(videoRef.current.currentTime || 0);
+        if (videoRef.current.duration) setDuration(videoRef.current.duration);
+      }
+    }, 250);
+
+    return () => clearInterval(timer);
+  }, [isPlaying, mediaState.sourceType]);
 
   // 404 / Playback Error Handling State
   const [hasPlaybackError, setHasPlaybackError] = useState(false);
@@ -236,7 +257,7 @@ export default function CinemaPlayer({
           const levels = data.levels.map(l => `${l.height}p`);
           setAvailableQualities(['Auto', ...new Set(levels)]);
           if (isPlaying) {
-            videoRef.current.play().catch(() => {});
+            videoRef.current.play().catch(() => { });
           }
         });
         hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, () => {
@@ -316,43 +337,40 @@ export default function CinemaPlayer({
     }
   };
 
-  const handleQualityChange = (q) => {
-    setSelectedQuality(q);
-    if (hlsRef.current) {
-      if (q === 'Auto') {
-        hlsRef.current.currentLevel = -1;
-      } else {
-        const height = parseInt(q);
-        const levelIdx = hlsRef.current.levels.findIndex(l => l.height === height);
-        if (levelIdx !== -1) {
-          hlsRef.current.currentLevel = levelIdx;
+  const handleAudioBoostChange = (multiplier) => {
+    setAudioBoost(multiplier);
+
+    // 1. Direct HTML5 / HLS Video Web Audio API GainNode Amplification
+    if (videoRef.current) {
+      try {
+        if (!audioCtxRef.current) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          const ctx = new AudioContext();
+          const source = ctx.createMediaElementSource(videoRef.current);
+          const gainNode = ctx.createGain();
+          source.connect(gainNode);
+          gainNode.connect(ctx.destination);
+          audioCtxRef.current = ctx;
+          gainNodeRef.current = gainNode;
+        }
+        if (audioCtxRef.current.state === 'suspended') {
+          audioCtxRef.current.resume();
+        }
+        if (gainNodeRef.current) {
+          gainNodeRef.current.gain.setTargetAtTime(multiplier, audioCtxRef.current.currentTime, 0.05);
+        }
+      } catch (err) {
+        console.warn('[WebAudio API Boost Note]:', err);
+        if (gainNodeRef.current) {
+          try { gainNodeRef.current.gain.value = multiplier; } catch (e) { }
         }
       }
     }
-  };
 
-  const handleAudioBoostChange = (multiplier) => {
-    setAudioBoost(multiplier);
-    if (!videoRef.current) return;
-    try {
-      if (!audioCtxRef.current) {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        const ctx = new AudioContext();
-        const source = ctx.createMediaElementSource(videoRef.current);
-        const gainNode = ctx.createGain();
-        source.connect(gainNode);
-        gainNode.connect(ctx.destination);
-        audioCtxRef.current = ctx;
-        gainNodeRef.current = gainNode;
-      }
-      if (audioCtxRef.current.state === 'suspended') {
-        audioCtxRef.current.resume();
-      }
-      if (gainNodeRef.current) {
-        gainNodeRef.current.gain.value = multiplier;
-      }
-    } catch (err) {
-      console.warn('AudioContext note:', err);
+    // 2. YouTube Stream Volume Boost (Max 100)
+    if (mediaState.sourceType === 'youtube' && ytPlayerRef.current?.setVolume) {
+      const boostedVolume = Math.min(100, Math.round(volume * 100 * multiplier));
+      ytPlayerRef.current.setVolume(boostedVolume);
     }
   };
 
@@ -405,7 +423,7 @@ export default function CinemaPlayer({
   useEffect(() => {
     if (mediaState.sourceType !== 'youtube' || !ytVideoId) {
       if (ytPlayerRef.current) {
-        try { ytPlayerRef.current.destroy(); } catch (e) {}
+        try { ytPlayerRef.current.destroy(); } catch (e) { }
         ytPlayerRef.current = null;
       }
       return;
@@ -416,7 +434,7 @@ export default function CinemaPlayer({
     const initYt = () => {
       if (!isSubscribed || !ytContainerRef.current) return;
       if (ytPlayerRef.current) {
-        try { ytPlayerRef.current.destroy(); } catch (e) {}
+        try { ytPlayerRef.current.destroy(); } catch (e) { }
         ytPlayerRef.current = null;
       }
 
@@ -428,9 +446,12 @@ export default function CinemaPlayer({
           videoId: ytVideoId,
           playerVars: {
             autoplay: mediaState.isPlaying ? 1 : 0,
-            controls: 1,
+            controls: 0,
             modestbranding: 1,
             rel: 0,
+            showinfo: 0,
+            iv_load_policy: 3,
+            disablekb: 1,
             start: Math.floor(mediaState.currentTime || 0)
           },
           events: {
@@ -472,7 +493,7 @@ export default function CinemaPlayer({
     return () => {
       isSubscribed = false;
       if (ytPlayerRef.current) {
-        try { ytPlayerRef.current.destroy(); } catch (e) {}
+        try { ytPlayerRef.current.destroy(); } catch (e) { }
         ytPlayerRef.current = null;
       }
       if (ytContainerRef.current) {
@@ -492,7 +513,7 @@ export default function CinemaPlayer({
         video.currentTime = mediaState.currentTime;
       }
       if (mediaState.isPlaying) {
-        video.play().catch(() => {});
+        video.play().catch(() => { });
       }
     };
 
@@ -541,7 +562,7 @@ export default function CinemaPlayer({
         ytPlayerRef.current.playVideo();
       } else if (videoRef.current) {
         videoRef.current.currentTime = t;
-        videoRef.current.play().catch(() => {});
+        videoRef.current.play().catch(() => { });
       }
 
       setTimeout(() => {
@@ -613,7 +634,7 @@ export default function CinemaPlayer({
     } else if (videoRef.current) {
       t = videoRef.current.currentTime;
       if (nextState) {
-        videoRef.current.play().catch(() => {});
+        videoRef.current.play().catch(() => { });
         socket?.emit('media-play', { currentTime: t });
       } else {
         videoRef.current.pause();
@@ -821,6 +842,7 @@ export default function CinemaPlayer({
             ref={videoRef}
             src={mediaState.url?.includes('.m3u8') ? undefined : mediaState.url}
             playsInline
+            crossOrigin="anonymous"
             controls={false}
             onClick={togglePlay}
             onDoubleClick={toggleTheaterFullscreen}
@@ -981,8 +1003,8 @@ export default function CinemaPlayer({
           </div>
         )}
 
-        {/* Center Big Play/Pause Indicator (Shown when paused) */}
-        {!isPlaying && (
+        {/* Center Big Play/Pause Indicator (Shown when paused in Native / YouTube mode ONLY) */}
+        {mediaState.sourceType !== 'embed' && !isPlaying && (
           <div
             className="center-play-indicator"
             onClick={(e) => {
@@ -1031,93 +1053,108 @@ export default function CinemaPlayer({
           </div>
         )}
 
-        {/* FLOATING CINEMA CONTROLS OVERLAY — Only for direct/local/HLS videos, NOT for embed or youtube */}
+        {/* FLOATING UNIFIED CINEMA CONTROLS OVERLAY — Clean & Non-Overlapping */}
         <div
           className="cinema-control-overlay"
           style={{
-            opacity: (showControls || !isPlaying) && mediaState.sourceType !== 'embed' && mediaState.sourceType !== 'youtube' ? 1 : 0,
-            pointerEvents: (showControls || !isPlaying) && mediaState.sourceType !== 'embed' && mediaState.sourceType !== 'youtube' ? 'auto' : 'none',
-            display: mediaState.sourceType === 'embed' || mediaState.sourceType === 'youtube' ? 'none' : undefined
+            opacity: (showControls || !isPlaying || mediaState.sourceType === 'embed') ? 1 : 0,
+            pointerEvents: 'none'
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Full-Width Interactive Timeline Scrubber Slider */}
-          <div className="scrub-container">
-            <input
-              type="range"
-              min="0"
-              max={duration || 100}
-              step="0.5"
-              value={currentTime || 0}
-              onChange={(e) => {
-                const targetTime = parseFloat(e.target.value);
-                setCurrentTime(targetTime);
-                if (videoRef.current) {
-                  videoRef.current.currentTime = targetTime;
-                } else if (ytPlayerRef.current?.seekTo) {
-                  ytPlayerRef.current.seekTo(targetTime, true);
-                }
-                socket?.emit('media-seek', { currentTime: targetTime });
-              }}
-              className="cinema-scrubber"
-              style={{
-                background: `linear-gradient(to right, #f43f5e ${(currentTime / (duration || 1)) * 100}%, rgba(255,255,255,0.2) ${(currentTime / (duration || 1)) * 100}%)`
-              }}
-              title="Drag to Scrub Timeline"
-            />
-          </div>
+          {/* Full-Width Interactive Timeline Scrubber Slider (Native & YouTube mode ONLY) */}
+          {mediaState.sourceType !== 'embed' && (
+            <div className="scrub-container" style={{ pointerEvents: 'auto' }}>
+              <input
+                type="range"
+                min="0"
+                max={duration || 100}
+                step="0.5"
+                value={currentTime || 0}
+                onChange={(e) => {
+                  const targetTime = parseFloat(e.target.value);
+                  setCurrentTime(targetTime);
+                  if (videoRef.current) {
+                    videoRef.current.currentTime = targetTime;
+                  } else if (ytPlayerRef.current?.seekTo) {
+                    ytPlayerRef.current.seekTo(targetTime, true);
+                  }
+                  socket?.emit('media-seek', { currentTime: targetTime });
+                }}
+                className="cinema-scrubber"
+                style={{
+                  background: `linear-gradient(to right, #c084fc ${(currentTime / (duration || 1)) * 100}%, rgba(255,255,255,0.2) ${(currentTime / (duration || 1)) * 100}%)`
+                }}
+                title="Drag to Scrub Timeline"
+              />
+            </div>
+          )}
 
           {/* Bottom Control Row */}
-          <div className="cinema-control-row">
+          <div className="cinema-control-row" style={{ pointerEvents: 'auto' }}>
             {/* Left Controls */}
             <div className="control-group">
-              <button
-                onClick={togglePlay}
-                className="ctrl-btn play-btn"
-                title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
-              >
-                {isPlaying ? <Pause size={18} /> : <Play size={18} style={{ marginLeft: '2px' }} />}
-              </button>
+              {mediaState.sourceType !== 'embed' ? (
+                <>
+                  <button
+                    onClick={togglePlay}
+                    className="ctrl-btn play-btn"
+                    title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
+                  >
+                    {isPlaying ? <Pause size={18} /> : <Play size={18} style={{ marginLeft: '2px' }} />}
+                  </button>
 
-              <button
-                onClick={() => handleSeekDelta(-10)}
-                className="ctrl-btn"
-                title="Rewind 10s (Left Arrow)"
-              >
-                <RotateCcw size={15} />
-              </button>
+                  <button
+                    onClick={() => handleSeekDelta(-10)}
+                    className="ctrl-btn"
+                    title="Rewind 10s (Left Arrow)"
+                  >
+                    <RotateCcw size={15} />
+                  </button>
 
-              <button
-                onClick={() => handleSeekDelta(10)}
-                className="ctrl-btn"
-                title="Forward 10s (Right Arrow)"
-              >
-                <RotateCw size={15} />
-              </button>
+                  <button
+                    onClick={() => handleSeekDelta(10)}
+                    className="ctrl-btn"
+                    title="Forward 10s (Right Arrow)"
+                  >
+                    <RotateCw size={15} />
+                  </button>
 
-              <div className="volume-container">
-                <button
-                  onClick={toggleMute}
-                  className="ctrl-btn"
-                  title={isMuted ? 'Unmute (M)' : 'Mute (M)'}
-                  style={{ width: '30px', height: '30px' }}
-                >
-                  {isMuted || volume === 0 ? <VolumeX size={15} /> : <Volume2 size={15} />}
-                </button>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  value={isMuted ? 0 : volume}
-                  onChange={handleVolumeChange}
-                  className="volume-slider"
-                />
-              </div>
+                  <div className="volume-container">
+                    <button
+                      onClick={toggleMute}
+                      className="ctrl-btn"
+                      title={isMuted ? 'Unmute (M)' : 'Mute (M)'}
+                      style={{ width: '30px', height: '30px' }}
+                    >
+                      {isMuted || volume === 0 ? <VolumeX size={15} /> : <Volume2 size={15} />}
+                    </button>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.05"
+                      value={isMuted ? 0 : volume}
+                      onChange={handleVolumeChange}
+                      className="volume-slider"
+                    />
+                  </div>
 
-              <span className="time-display">
-                {formatTime(currentTime)} / {formatTime(duration)}
-              </span>
+                  <span className="time-display">
+                    {formatTime(currentTime)} / {formatTime(duration)}
+                  </span>
+                </>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{
+                    fontSize: '11px', fontWeight: '800', color: '#c084fc',
+                    background: 'rgba(168, 85, 247, 0.15)', border: '1px solid rgba(168, 85, 247, 0.35)',
+                    padding: '3px 10px', borderRadius: '14px', display: 'flex', alignItems: 'center', gap: '5px'
+                  }}>
+                    <Zap size={12} color="#c084fc" /> Embed CDN Server
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Center: Movie Title */}
@@ -1129,11 +1166,115 @@ export default function CinemaPlayer({
 
             {/* Right Controls */}
             <div className="control-group">
+              {/* Server Switcher Dropdown (If multiple servers available) */}
+              {mediaState.servers && mediaState.servers.length > 0 && (
+                <div style={{ position: 'relative' }}>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsServerDropdownOpen(!isServerDropdownOpen);
+                      setIsSubtitleDrawerOpen(false);
+                      setIsSettingsDrawerOpen(false);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '4px 10px',
+                      fontSize: '11px',
+                      fontWeight: '600',
+                      borderRadius: '8px',
+                      background: 'rgba(168, 85, 247, 0.18)',
+                      border: '1px solid rgba(168, 85, 247, 0.4)',
+                      color: '#e9d5ff',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                    title="Switch Streaming Server"
+                  >
+                    <Server size={13} color="#c084fc" />
+                    <span>
+                      {mediaState.servers.find((s) => s.url === mediaState.url)?.name || 'Server Selector'}
+                    </span>
+                    <ChevronDown size={12} style={{ transform: isServerDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                  </button>
+
+                  {isServerDropdownOpen && (
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        position: 'absolute',
+                        bottom: '42px',
+                        right: 0,
+                        zIndex: 95,
+                        width: '220px',
+                        background: 'rgba(18, 18, 24, 0.96)',
+                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                        borderRadius: '12px',
+                        backdropFilter: 'blur(20px)',
+                        padding: '6px',
+                        boxShadow: '0 16px 36px rgba(0, 0, 0, 0.85)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '4px'
+                      }}
+                    >
+                      <div style={{ fontSize: '10px', fontWeight: '700', color: '#a1a1aa', padding: '4px 8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        Available Servers ({mediaState.servers.length})
+                      </div>
+                      {mediaState.servers.map((srv, idx) => {
+                        const isSelected = mediaState.url === srv.url;
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => {
+                              const newSourceType = srv.sourceType || (srv.isNativePlayer || srv.url?.includes('.m3u8') ? 'direct' : 'embed');
+                              const updated = {
+                                ...mediaState,
+                                url: srv.url,
+                                sourceType: newSourceType,
+                                subtitlesUrl: srv.subtitlesUrl || mediaState.subtitlesUrl
+                              };
+                              onMediaChange?.(updated);
+                              socket?.emit('media-change', updated);
+                              setIsServerDropdownOpen(false);
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '7px 10px',
+                              borderRadius: '8px',
+                              background: isSelected ? 'rgba(168, 85, 247, 0.2)' : 'rgba(255,255,255,0.02)',
+                              border: isSelected ? '1px solid rgba(168, 85, 247, 0.4)' : '1px solid rgba(255,255,255,0.05)',
+                              color: isSelected ? '#ffffff' : '#a1a1aa',
+                              fontSize: '11px',
+                              fontWeight: isSelected ? '700' : '500',
+                              cursor: 'pointer',
+                              textAlign: 'left'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <Server size={12} color={isSelected ? '#c084fc' : '#71717a'} />
+                              <span>{srv.name}</span>
+                            </div>
+                            {isSelected && <Check size={12} color="#c084fc" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Subtitles Button */}
               <button
                 onClick={() => {
                   setIsSubtitleDrawerOpen(!isSubtitleDrawerOpen);
                   setIsSettingsDrawerOpen(false);
+                  setIsServerDropdownOpen(false);
                 }}
                 className={`ctrl-btn ${subtitlesEnabled ? 'active' : ''}`}
                 title="Subtitles & Captions"
@@ -1146,6 +1287,7 @@ export default function CinemaPlayer({
                 onClick={() => {
                   setIsSettingsDrawerOpen(!isSettingsDrawerOpen);
                   setIsSubtitleDrawerOpen(false);
+                  setIsServerDropdownOpen(false);
                 }}
                 className={`ctrl-btn ${isSettingsDrawerOpen ? 'active' : ''}`}
                 title="Settings (Speed, Audio Boost, Quality)"
@@ -1174,8 +1316,8 @@ export default function CinemaPlayer({
               right: '60px',
               zIndex: 80,
               width: '300px',
-              background: 'rgba(15, 20, 32, 0.95)',
-              border: '1px solid rgba(255, 255, 255, 0.18)',
+              background: 'rgba(18, 18, 24, 0.96)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
               borderRadius: '16px',
               backdropFilter: 'blur(20px)',
               padding: '16px',
@@ -1188,7 +1330,7 @@ export default function CinemaPlayer({
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '8px' }}>
               <span style={{ fontSize: '13px', fontWeight: '700', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Subtitles size={16} color="#f43f5e" /> Subtitles
+                <Subtitles size={16} color="#c084fc" /> Subtitles
               </span>
               <button onClick={() => setIsSubtitleDrawerOpen(false)} className="btn btn-secondary btn-icon" style={{ width: '22px', height: '22px' }}>
                 <X size={12} />
@@ -1209,7 +1351,7 @@ export default function CinemaPlayer({
 
             <div>
               <label className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '8px', fontSize: '11px', cursor: 'pointer', borderRadius: '8px', border: '1px dashed rgba(255,255,255,0.25)' }}>
-                <Upload size={14} color="#f43f5e" />
+                <Upload size={14} color="#c084fc" />
                 <span>{subFileName ? subFileName : 'Upload .srt / .vtt file'}</span>
                 <input type="file" accept=".srt,.vtt" onChange={handleSubtitleUpload} style={{ display: 'none' }} />
               </label>
@@ -1226,8 +1368,8 @@ export default function CinemaPlayer({
               right: '20px',
               zIndex: 80,
               width: '280px',
-              background: 'rgba(15, 20, 32, 0.95)',
-              border: '1px solid rgba(255, 255, 255, 0.18)',
+              background: 'rgba(18, 18, 24, 0.96)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
               borderRadius: '16px',
               backdropFilter: 'blur(20px)',
               padding: '16px',
@@ -1240,7 +1382,7 @@ export default function CinemaPlayer({
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '8px' }}>
               <span style={{ fontSize: '13px', fontWeight: '700', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Settings size={16} color="#38bdf8" /> Cinema Settings
+                <Settings size={16} color="#c084fc" /> Cinema Settings
               </span>
               <button onClick={() => setIsSettingsDrawerOpen(false)} className="btn btn-secondary btn-icon" style={{ width: '22px', height: '22px' }}>
                 <X size={12} />
@@ -1248,16 +1390,33 @@ export default function CinemaPlayer({
             </div>
 
             <div>
-              <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '6px' }}>
-                Playback Speed:
-              </span>
-              <div style={{ display: 'flex', gap: '4px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ fontSize: '11.5px', color: '#a1a1aa', fontWeight: '600' }}>
+                  Playback Speed:
+                </span>
+                <span style={{ fontSize: '11.5px', fontWeight: '800', color: playbackSpeed !== 1 ? '#ff5500' : '#a1a1aa' }}>
+                  {playbackSpeed}x
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: '5px' }}>
                 {[0.75, 1, 1.25, 1.5, 2].map((spd) => (
                   <button
                     key={spd}
+                    type="button"
                     onClick={() => handleSpeedChange(spd)}
-                    className={`btn ${playbackSpeed === spd ? 'btn-primary' : 'btn-secondary'}`}
-                    style={{ flex: 1, padding: '3px', fontSize: '10px', borderRadius: '6px' }}
+                    style={{
+                      flex: 1,
+                      padding: '5px 0',
+                      fontSize: '11px',
+                      fontWeight: '800',
+                      borderRadius: '8px',
+                      background: playbackSpeed === spd ? 'linear-gradient(135deg, #ff5500, #e11d48)' : 'rgba(255,255,255,0.05)',
+                      border: playbackSpeed === spd ? '1px solid #ff5500' : '1px solid rgba(255,255,255,0.08)',
+                      color: '#ffffff',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      boxShadow: playbackSpeed === spd ? '0 0 12px rgba(255,85,0,0.5)' : 'none'
+                    }}
                   >
                     {spd}x
                   </button>
@@ -1266,19 +1425,32 @@ export default function CinemaPlayer({
             </div>
 
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Super Audio Boost:</span>
-                <span style={{ fontSize: '11px', fontWeight: '700', color: audioBoost > 1 ? '#22c55e' : 'var(--text-sub)' }}>
-                  {audioBoost * 100}%
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ fontSize: '11.5px', color: '#a1a1aa', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Volume2 size={13} color="#22c55e" /> Super Audio Boost:
+                </span>
+                <span style={{ fontSize: '11.5px', fontWeight: '800', color: audioBoost > 1 ? '#22c55e' : '#a1a1aa' }}>
+                  {Math.round(audioBoost * 100)}%
                 </span>
               </div>
-              <div style={{ display: 'flex', gap: '6px' }}>
-                {[1, 1.5, 2].map((b) => (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '5px' }}>
+                {[1, 1.5, 2, 3].map((b) => (
                   <button
                     key={b}
+                    type="button"
                     onClick={() => handleAudioBoostChange(b)}
-                    className={`btn ${audioBoost === b ? 'btn-primary' : 'btn-secondary'}`}
-                    style={{ padding: '2px 6px', fontSize: '10px', borderRadius: '4px' }}
+                    style={{
+                      padding: '5px 0',
+                      fontSize: '11px',
+                      fontWeight: '800',
+                      borderRadius: '8px',
+                      background: audioBoost === b ? 'linear-gradient(135deg, #22c55e, #16a34a)' : 'rgba(255,255,255,0.05)',
+                      border: audioBoost === b ? '1px solid #22c55e' : '1px solid rgba(255,255,255,0.08)',
+                      color: '#ffffff',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      boxShadow: audioBoost === b ? '0 0 12px rgba(34,197,94,0.5)' : 'none'
+                    }}
                   >
                     {b * 100}%
                   </button>
@@ -1298,16 +1470,16 @@ export default function CinemaPlayer({
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '8px 14px',
-            background: 'linear-gradient(90deg, rgba(244, 63, 94, 0.15) 0%, rgba(15, 23, 42, 0.95) 40%)',
-            borderBottom: '1px solid rgba(244, 63, 94, 0.3)',
+            background: 'linear-gradient(90deg, rgba(168, 85, 247, 0.15) 0%, rgba(15, 18, 24, 0.95) 40%)',
+            borderBottom: '1px solid rgba(168, 85, 247, 0.25)',
             gap: '12px',
             overflowX: 'auto'
           }}
         >
           {/* Season Selector */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-            <span style={{ fontSize: '11px', fontWeight: '700', color: '#fda4af', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Tv size={13} color="#f43f5e" /> Season:
+            <span style={{ fontSize: '11px', fontWeight: '700', color: '#c084fc', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Tv size={13} color="#c084fc" /> Season:
             </span>
             {[1, 2, 3, 4, 5].map((s) => (
               <button
@@ -1319,9 +1491,11 @@ export default function CinemaPlayer({
                   padding: '2px 8px',
                   fontSize: '11px',
                   borderRadius: '12px',
-                  background: currentSeason === s ? '#f43f5e' : 'rgba(255,255,255,0.06)',
+                  background: currentSeason === s ? 'rgba(168, 85, 247, 0.3)' : 'rgba(255,255,255,0.06)',
+                  color: '#e9d5ff',
+                  border: currentSeason === s ? '1px solid rgba(168, 85, 247, 0.5)' : '1px solid rgba(255,255,255,0.08)',
                   fontWeight: currentSeason === s ? '700' : '500',
-                  boxShadow: currentSeason === s ? '0 0 10px rgba(244,63,94,0.5)' : 'none'
+                  boxShadow: currentSeason === s ? '0 0 10px rgba(168, 85, 247, 0.4)' : 'none'
                 }}
               >
                 S{s}
@@ -1354,10 +1528,10 @@ export default function CinemaPlayer({
                   fontSize: '11px',
                   fontWeight: currentEpisode === ep ? '700' : '500',
                   borderRadius: '14px',
-                  background: currentEpisode === ep ? '#f43f5e' : 'rgba(255,255,255,0.06)',
-                  color: '#fff',
-                  border: currentEpisode === ep ? '1.5px solid #fda4af' : '1px solid rgba(255,255,255,0.1)',
-                  boxShadow: currentEpisode === ep ? '0 0 10px rgba(244,63,94,0.6)' : 'none',
+                  background: currentEpisode === ep ? 'rgba(168, 85, 247, 0.3)' : 'rgba(255,255,255,0.06)',
+                  color: '#f4f4f5',
+                  border: currentEpisode === ep ? '1px solid rgba(168, 85, 247, 0.5)' : '1px solid rgba(255,255,255,0.08)',
+                  boxShadow: currentEpisode === ep ? '0 0 10px rgba(168, 85, 247, 0.4)' : 'none',
                   flexShrink: 0
                 }}
               >
@@ -1376,9 +1550,9 @@ export default function CinemaPlayer({
                 alignItems: 'center',
                 gap: '4px',
                 borderRadius: '14px',
-                background: 'linear-gradient(135deg, #f43f5e, #e11d48)',
+                background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.85), rgba(126, 34, 206, 0.95))',
                 flexShrink: 0,
-                boxShadow: '0 0 12px rgba(244,63,94,0.5)'
+                boxShadow: '0 0 12px rgba(168, 85, 247, 0.4)'
               }}
               title="Next Episode"
             >
@@ -1388,108 +1562,65 @@ export default function CinemaPlayer({
         </div>
       )}
 
-      {/* Multiple Streaming Server Switcher Bar */}
-      {mediaState.servers && mediaState.servers.length > 0 && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '6px 14px',
-            background: 'rgba(10, 12, 18, 0.95)',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-            backdropFilter: 'blur(12px)',
-            fontSize: '11px'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'rgba(255,255,255,0.45)', fontSize: '11px', fontWeight: '700', letterSpacing: '0.4px', textTransform: 'uppercase' }}>
-              <Layers size={13} color="rgba(255,255,255,0.6)" /> Servers:
-            </span>
-            {mediaState.servers.map((srv, idx) => {
-              const isSelected = mediaState.url === srv.url;
-              const isNative = srv.isNativePlayer || srv.sourceType === 'direct' || srv.url?.includes('.m3u8');
-              const isHdhub = srv.isHdhubNative || srv.name.toLowerCase().includes('hdhub');
-              return (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => {
-                    const newSourceType = srv.sourceType || (isNative ? 'direct' : 'embed');
-                    const updated = {
-                      ...mediaState,
-                      url: srv.url,
-                      sourceType: newSourceType,
-                      subtitlesUrl: srv.subtitlesUrl || mediaState.subtitlesUrl
-                    };
-                    onMediaChange?.(updated);
-                    socket?.emit('media-change', updated);
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    padding: '3px 10px',
-                    fontSize: '11px',
-                    borderRadius: '16px',
-                    background: isSelected ? 'rgba(255, 85, 0, 0.2)' : 'rgba(255, 255, 255, 0.05)',
-                    border: isSelected ? '1px solid #ff5500' : '1px solid rgba(255, 255, 255, 0.08)',
-                    color: isSelected ? '#ff7733' : 'rgba(255, 255, 255, 0.75)',
-                    fontWeight: isSelected ? '700' : '500',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                    boxShadow: isSelected ? '0 0 12px rgba(255, 85, 0, 0.3)' : 'none'
-                  }}
-                >
-                  {isNative ? <Zap size={11} color={isSelected ? '#ff7733' : '#a1a1aa'} /> : <Server size={11} color={isSelected ? '#ff7733' : '#a1a1aa'} />}
-                  <span>{srv.name}</span>
-                </button>
-              );
-            })}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <button
-              type="button"
-              onClick={() => reportStreamError('User Reported 404 / Video Stream Failed')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px',
-                padding: '3px 10px',
-                fontSize: '11px',
-                borderRadius: '16px',
-                background: isReporting ? 'rgba(239, 68, 68, 0.3)' : 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(255, 85, 0, 0.35)',
-                color: '#ff7733',
-                cursor: 'pointer',
-                fontWeight: '600',
-                transition: 'all 0.15s ease'
-              }}
-              title="Stream not working? Click to ask ViAM AI in chat for an alternate link"
-            >
-              <AlertTriangle size={12} color="#ff7733" />
-              <span>{isReporting ? 'Alerted AI!' : 'Report 404'}</span>
-            </button>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '3px 8px',
-                borderRadius: '16px',
-                background: 'rgba(16, 185, 129, 0.08)',
-                border: '1px solid rgba(16, 185, 129, 0.25)',
-                color: '#34d399',
-                fontSize: '10.5px',
-                fontWeight: '600'
-              }}
-            >
-              <ShieldCheck size={12} />
-              <span>Protected</span>
-            </div>
+      {/* Sleek Compact Player Status Bar */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '6px 16px',
+          background: 'rgba(12, 14, 20, 0.98)',
+          borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+          fontSize: '11px'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '11px', color: '#a1a1aa', fontWeight: '600' }}>
+            Source: {mediaState.sourceType === 'youtube' ? '▶️ YouTube Stream' : mediaState.sourceType === 'direct' ? '⚡ Direct HLS Stream' : '🌐 Cinema Server CDN'}
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            type="button"
+            onClick={() => reportStreamError('User Reported 404 / Video Stream Failed')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              padding: '3px 10px',
+              fontSize: '11px',
+              borderRadius: '16px',
+              background: isReporting ? 'rgba(239, 68, 68, 0.3)' : 'rgba(255, 255, 255, 0.04)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              color: '#a1a1aa',
+              cursor: 'pointer',
+              fontWeight: '600'
+            }}
+            title="Stream not working? Click to ask ViAM AI in chat for an alternate link"
+          >
+            <AlertTriangle size={12} color="#a1a1aa" />
+            <span>{isReporting ? 'Alerted AI!' : 'Report 404'}</span>
+          </button>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '3px 8px',
+              borderRadius: '16px',
+              background: 'rgba(16, 185, 129, 0.08)',
+              border: '1px solid rgba(16, 185, 129, 0.25)',
+              color: '#34d399',
+              fontSize: '10.5px',
+              fontWeight: '600'
+            }}
+          >
+            <ShieldCheck size={12} />
+            <span>Protected</span>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Floating Duo Webcams for Couple Lounge */}
       {children}

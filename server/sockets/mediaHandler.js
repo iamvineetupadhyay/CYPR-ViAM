@@ -9,6 +9,8 @@ function sanitizeTime(time) {
   return Number.isFinite(num) && num >= 0 ? num : 0;
 }
 
+const DBService = require('../services/dbService');
+
 function registerMediaHandlers(io, socket, state) {
   socket.on('media-change', (newMedia) => {
     if (!state.currentRoom) return;
@@ -24,6 +26,12 @@ function registerMediaHandlers(io, socket, state) {
       isPlaying: true,
       updatedAt: Date.now()
     };
+
+    // Log watch activity to DB for AI personalization & memory
+    if (newMedia && newMedia.title && newMedia.title !== 'No movie selected') {
+      DBService.logActivity(state.currentUser?.email, state.currentUser?.name, state.currentRoom, 'watch', newMedia.title);
+    }
+
     io.to(state.currentRoom).emit('media-changed', room.mediaState);
   });
 

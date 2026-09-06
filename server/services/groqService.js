@@ -94,15 +94,25 @@ async function callGroqAPI(messages, { model = DEFAULT_MODEL, temperature = 0.7,
 /**
  * 1. AI Chat & Companion Response (Ultra Token Efficient)
  */
-async function getCompanionResponse(userMessage, conversationHistory = [], currentMovie = null) {
+async function getCompanionResponse(userMessage, conversationHistory = [], currentMovie = null, userMemory = []) {
   const messages = [
     { role: 'system', content: VIAM_SYSTEM_PROMPT }
   ];
 
+  if (userMemory && Array.isArray(userMemory) && userMemory.length > 0) {
+    const memorySummary = userMemory
+      .map(m => `[${m.activityType.toUpperCase()}]: ${m.detail}`)
+      .join('; ');
+    messages.push({
+      role: 'system',
+      content: `[PERSONALIZED USER ACTIVITY MEMORY & PREFERENCES: The user's recent lounge activity memory includes: "${memorySummary}". Use this memory to personalize your answers, remember their favorite genres/movies, and adapt your tone to their co-watching history!]`
+    });
+  }
+
   if (currentMovie && currentMovie.title && currentMovie.title !== 'No movie selected') {
     messages.push({
       role: 'system',
-      content: `[Current Lounge Movie Context: "${currentMovie.title}"]`
+      content: `[CRITICAL MOVIE CONTEXT: The active movie playing right now in the lounge is "${currentMovie.title}". If the user asks "tell me about this", "what is this movie", "what's this about", "this", or questions about the plot, they are specifically asking about "${currentMovie.title}". Provide an exciting, concise plot overview, trivia, and watch recommendations for "${currentMovie.title}".]`
     });
   }
 
@@ -260,7 +270,18 @@ Return strictly a JSON object:
  * Intelligent Fallback Generator if API Key is missing or offline
  */
 function generateFallbackResponse(messages) {
+  const contextMsg = messages.find(m => m.role === 'system' && (m.content.includes('CRITICAL MOVIE CONTEXT') || m.content.includes('Movie Context:')));
+  let movieTitle = '';
+  if (contextMsg) {
+    const match = contextMsg.content.match(/"([^"]+)"/);
+    if (match) movieTitle = match[1];
+  }
+
   const lastUserMsg = messages[messages.length - 1]?.content?.toLowerCase() || '';
+
+  if (movieTitle && (lastUserMsg.includes('this') || lastUserMsg.includes('movie') || lastUserMsg.includes('about') || lastUserMsg.includes('tell') || lastUserMsg.includes('what'))) {
+    return `🎬 **${movieTitle}** 🍿\n\n• **What's it about?**\nAn exciting cinema title selected for your lounge! Watch live together with full 0ms audio/video sync.\n\n• **Lounge Vibe:**\nGreat pick for date night & watch party! Ask me any specific plot details or movie trivia! ✨`;
+  }
 
   if (lastUserMsg.includes('recommend') || lastUserMsg.includes('suggest') || lastUserMsg.includes('batao')) {
     return `🍿 **ViAM AI Movie Picks for Tonight:**\n\n1. **About Time (2013)** — *Rom-Com/Sci-Fi*: Beautiful, touching time-travel romance.\n2. **Inception (2010)** — *Sci-Fi Thriller*: Christopher Nolan's legendary dream heist.\n3. **La La Land (2016)** — *Musical/Romance*: Modern masterpiece with incredible music.\n4. **A Quiet Place (2018)** — *Horror/Thriller*: Intense suspense best watched in the dark!\n\n💡 *Tip: Configure your \`GROQ_API_KEY\` in \`.env\` for live dynamic AI recommendations!*`;

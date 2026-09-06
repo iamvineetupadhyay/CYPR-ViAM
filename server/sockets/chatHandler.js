@@ -1,14 +1,16 @@
 const { RoomStore } = require('../services/roomStore');
 const { createSocketRateLimiter } = require('../middleware/rateLimiter');
 const GroqService = require('../services/groqService');
+const DBService = require('../services/dbService');
 
 // Anti-spam rate limiters for chat & reactions
 const chatMsgLimiter = createSocketRateLimiter(8, 3000); // 8 messages per 3s
 const reactionLimiter = createSocketRateLimiter(15, 3000); // 15 reactions per 3s
 
 function sanitizeString(str, maxLength = 2000) {
-  if (typeof str !== 'string') return '';
-  return str.slice(0, maxLength).trim();
+  if (str === null || str === undefined) return '';
+  const s = typeof str === 'string' ? str : String(str);
+  return s.slice(0, maxLength).trim();
 }
 
 async function resolveMovieForPlay(queryOrUrl) {
@@ -131,11 +133,14 @@ function registerChatHandlers(io, socket, state) {
       return socket.emit('rate-limit-warning', { message: 'Chatting too fast. Please slow down.' });
     }
 
-    const cleanText = sanitizeString(msg.text, 2000);
-    if (!cleanText) return;
+    const cleanText = typeof msg.text === 'string' ? sanitizeString(msg.text, 5000) : '';
+    const isMedia = ['image', 'file', 'voice', 'gif', 'sticker'].includes(msg.type) && !!msg.content;
 
-    // Check for /play command
-    if (cleanText.toLowerCase().startsWith('/play')) {
+    // Reject message only if neither text nor media content is present
+    if (!cleanText && !isMedia) return;
+
+    // Check for /play command (only for text messages)
+    if (cleanText && cleanText.toLowerCase().startsWith('/play')) {
       const targetQuery = cleanText.replace(/^\/play\s*/i, '').trim();
 
       if (!targetQuery) {
@@ -199,10 +204,16 @@ function registerChatHandlers(io, socket, state) {
 
     const outMsg = {
       ...msg,
+      id: msg.id || (Date.now() + '-' + Math.random().toString(36).substr(2, 6)),
+      type: msg.type || 'text',
       text: cleanText,
+      content: isMedia ? msg.content : (msg.content || undefined),
+      fileName: msg.fileName ? sanitizeString(msg.fileName, 255) : undefined,
+      fileSize: msg.fileSize ? sanitizeString(msg.fileSize, 50) : undefined,
+      duration: msg.duration ? sanitizeString(msg.duration, 50) : undefined,
       senderId: socket.id,
       senderName: state.currentUser?.name || msg.senderName || 'Anonymous',
-      timestamp: Date.now()
+      timestamp: msg.timestamp || Date.now()
     };
 
     if (msg.recipientSocketId && msg.recipientSocketId !== 'group') {
@@ -219,11 +230,16 @@ function registerChatHandlers(io, socket, state) {
       RoomStore.addMessage(state.currentRoom, groupMsg);
     }
 
-    // AI Companion Bot Auto-Responder (@ai or direct message to viam-ai-bot)
-    const isAiMention = cleanText.toLowerCase().includes('@ai') || cleanText.toLowerCase().startsWith('ai ') || msg.recipientSocketId === 'viam-ai-bot';
+    // AI Companion Bot Auto-Responder (@ai, @viam, or direct message to viam-ai-bot)
+    const lowerText = cleanText ? cleanText.toLowerCase() : '';
+    const isAiMention = lowerText && (lowerText.includes('@ai') || lowerText.includes('@viam') || lowerText.startsWith('ai ') || lowerText.startsWith('hey ai') || msg.recipientSocketId === 'viam-ai-bot');
 
     if (isAiMention) {
-      const userPrompt = cleanText.replace(/@ai/gi, '').trim();
+      const userPrompt = cleanText.replace(/@ai|@viam-ai|@viam|hey ai/gi, '').trim();
+
+      // Log AI chat activity for personalized AI memory
+      DBService.logActivity(state.currentUser?.email, state.currentUser?.name, state.currentRoom, 'ai_chat', userPrompt || cleanText);
+      const userMemory = DBService.getUserMemory(state.currentUser?.name, state.currentUser?.email, 12);
 
       // Emit typing indicator
       if (msg.recipientSocketId === 'viam-ai-bot') {
@@ -237,7 +253,8 @@ function registerChatHandlers(io, socket, state) {
           const aiReply = await GroqService.getCompanionResponse(
             userPrompt || 'Hey ViAM AI, what can you do?',
             [],
-            room.mediaState
+            room.mediaState,
+            userMemory
           );
 
           const aiMsg = {
@@ -335,9 +352,17 @@ function registerChatHandlers(io, socket, state) {
 
     if (!reactionLimiter(socket.id)) return;
 
+    const cleanMsgId = sanitizeString(messageId, 100);
+    const cleanEmoji = sanitizeString(emoji, 20);
+    if (!cleanMsgId || !cleanEmoji) return;
+
+    const userId = state.currentUser?.name || state.currentUser?.email || socket.id;
+    const updatedReactions = RoomStore.toggleReaction(state.currentRoom, cleanMsgId, cleanEmoji, userId);
+
     io.to(state.currentRoom).emit('message-reacted', {
-      messageId: sanitizeString(messageId, 100),
-      emoji: sanitizeString(emoji, 20),
+      messageId: cleanMsgId,
+      reactions: updatedReactions || {},
+      emoji: cleanEmoji,
       senderId: socket.id,
       senderName: state.currentUser?.name
     });
@@ -356,6 +381,24 @@ function registerChatHandlers(io, socket, state) {
       senderId: socket.id
     });
   });
+
+  // WhatsApp Read Receipts (Delivered & Seen Ticks)
+  socket.on('message-delivered', ({ messageId }) => {
+    if (!state.currentRoom || !messageId) return;
+    io.to(state.currentRoom).emit('message-status-update', { messageId, status: 'delivered' });
+  });
+
+  socket.on('message-seen', ({ messageId }) => {
+    if (!state.currentRoom || !messageId) return;
+    io.to(state.currentRoom).emit('message-status-update', { messageId, status: 'seen' });
+  });
+
+  // Message Delete for Everyone
+  socket.on('message-delete', ({ messageId }) => {
+    if (!state.currentRoom || !messageId) return;
+    io.to(state.currentRoom).emit('message-deleted', { messageId });
+  });
+
 
   // Call Signaling
   socket.on('call-invite', ({ isVideo }) => {

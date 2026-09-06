@@ -79,7 +79,18 @@ function initDatabase() {
       data TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS user_activities (
+      id TEXT PRIMARY KEY,
+      userEmail TEXT,
+      userName TEXT,
+      roomId TEXT,
+      activityType TEXT NOT NULL,
+      detail TEXT NOT NULL,
+      timestamp INTEGER NOT NULL
+    );
+
     CREATE INDEX IF NOT EXISTS idx_room_messages_roomId ON room_messages(roomId);
+    CREATE INDEX IF NOT EXISTS idx_user_activities_user ON user_activities(userEmail, userName);
   `);
 
   // Migrate existing tables if columns are missing
@@ -329,6 +340,43 @@ class DBService {
     const cleanRoomId = roomId.trim().toLowerCase();
     const stmt = db.prepare('DELETE FROM room_messages WHERE roomId = ?');
     stmt.run(cleanRoomId);
+  }
+
+  // --- User Activity & AI Memory Logging ---
+  static logActivity(userEmail, userName, roomId, activityType, detail) {
+    try {
+      const id = 'act_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+      const stmt = db.prepare(`
+        INSERT INTO user_activities (id, userEmail, userName, roomId, activityType, detail, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `);
+      stmt.run(
+        id,
+        (userEmail || 'guest').toLowerCase(),
+        userName || 'Guest',
+        roomId || 'default',
+        activityType,
+        typeof detail === 'object' ? JSON.stringify(detail) : String(detail),
+        Date.now()
+      );
+    } catch (err) {
+      console.warn('[DB Log Activity Error]:', err.message);
+    }
+  }
+
+  static getUserMemory(userName, userEmail, limit = 15) {
+    try {
+      const cleanEmail = (userEmail || '').toLowerCase();
+      const stmt = db.prepare(`
+        SELECT activityType, detail, timestamp FROM user_activities
+        WHERE userEmail = ? OR userName = ?
+        ORDER BY timestamp DESC LIMIT ?
+      `);
+      return stmt.all(cleanEmail, userName || '', limit);
+    } catch (err) {
+      console.warn('[DB Get User Memory Error]:', err.message);
+      return [];
+    }
   }
 }
 

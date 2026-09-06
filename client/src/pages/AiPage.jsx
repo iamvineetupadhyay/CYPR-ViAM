@@ -4,11 +4,14 @@ import {
   Volume2, VolumeX, Trash2, Plus, MessageSquare, Film, Home,
   Menu, X, Play, Compass, Lightbulb, HelpCircle, Film as MovieIcon,
   Flame, Clapperboard, ChevronRight, Share2, ExternalLink, Zap,
-  ThumbsUp, ThumbsDown, RefreshCw, MessageCircle
+  ThumbsUp, ThumbsDown, RefreshCw, MessageCircle, Sun, Moon
 } from 'lucide-react';
 import HeaderProfileMenu from '../components/HeaderProfileMenu';
 import FormattedAiResponse from '../components/FormattedAiResponse';
+import VoiceAssistant from '../components/VoiceAssistant';
 import { SERVER_URL } from '../utils/apiUrl';
+import { getT } from '../utils/themeTokens';
+
 
 export default function AiPage({
   currentUser,
@@ -20,8 +23,13 @@ export default function AiPage({
   onOpenCinema,
   onOpenChat,
   onOpenProfile,
-  onLeave
+  onLeave,
+  onToggleTheme,
+  onGlobalVoiceAction,
+  theme = 'dark'
 }) {
+  const T = getT(theme);
+
   // Multi-Session Chat State (Gemini History Model)
   const [sessions, setSessions] = useState(() => {
     try {
@@ -348,16 +356,18 @@ export default function AiPage({
       display: 'flex',
       height: '100vh',
       width: '100vw',
-      background: '#08090e',
-      backgroundImage: `
+      background: T.isLight ? T.pageBg : '#08090e',
+      backgroundImage: T.isLight ? 'none' : `
         radial-gradient(circle at 10% 20%, rgba(168, 85, 247, 0.08) 0%, transparent 45%),
         radial-gradient(circle at 90% 80%, rgba(56, 189, 248, 0.06) 0%, transparent 45%),
         radial-gradient(circle at 50% 50%, #0d0f17 0%, #06070a 100%)
       `,
-      color: '#ffffff',
+      color: T.textPrimary,
       fontFamily: 'Plus Jakarta Sans, Inter, sans-serif',
-      overflow: 'hidden'
+      overflow: 'hidden',
+      transition: 'background 0.4s ease, color 0.35s ease'
     }}>
+
 
       {/* ══════════════════════════════════════════════════════════════
           1. GEMINI-STYLE COLLAPSIBLE SIDEBAR (PRESERVED SESSIONS ONLY)
@@ -366,47 +376,87 @@ export default function AiPage({
         width: sidebarOpen ? 290 : 0,
         minWidth: sidebarOpen ? 290 : 0,
         height: '100%',
-        background: 'rgba(11, 13, 20, 0.96)',
+        background: T.sidebarBg,
         backdropFilter: 'blur(24px)',
-        borderRight: sidebarOpen ? '1px solid rgba(255, 255, 255, 0.07)' : 'none',
+        borderRight: sidebarOpen ? `1px solid ${T.sidebarBorder}` : 'none',
         display: 'flex',
         flexDirection: 'column',
         transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
         overflow: 'hidden',
         zIndex: 20
       }}>
-        {/* "+ New Cinema Chat" Button */}
-        <div style={{ padding: '20px 18px 14px', display: 'flex', alignItems: 'center' }}>
+        {/* Sidebar Brand Header */}
+        <div style={{
+          height: 64,
+          padding: '0 20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          borderBottom: `1px solid ${T.sidebarBorder}`,
+          flexShrink: 0
+        }}>
+          <img
+            src="/viam_logo.png"
+            alt="ViAM AI"
+            style={{
+              height: 42,
+              width: 'auto',
+              objectFit: 'contain',
+              filter: 'drop-shadow(0 2px 10px rgba(168, 85, 247, 0.5))'
+            }}
+          />
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{
+              fontWeight: 800,
+              fontSize: 15,
+              letterSpacing: '0.5px',
+              background: 'linear-gradient(135deg, #ffffff 0%, #c084fc 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent'
+            }}>
+              ViAM AI
+            </span>
+            <span style={{ fontSize: 10, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+              Cinema Intelligence
+            </span>
+          </div>
+        </div>
+
+        {/* "+ New Cinema Chat" Button (Pushed down nicely below header line) */}
+        <div style={{ padding: '16px 16px 10px', display: 'flex', alignItems: 'center' }}>
           <button
             onClick={handleCreateNewChat}
             style={{
               flex: 1,
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: 10,
-              background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.18) 0%, rgba(56, 189, 248, 0.14) 100%)',
-              border: '1px solid rgba(168, 85, 247, 0.4)',
-              borderRadius: 20,
-              padding: '11px 18px',
-              color: '#fff',
+              background: T.isLight
+                ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.12) 0%, rgba(236, 72, 153, 0.08) 100%)'
+                : 'linear-gradient(135deg, rgba(168, 85, 247, 0.16) 0%, rgba(236, 72, 153, 0.12) 100%)',
+              border: `1px solid ${T.isLight ? 'rgba(168, 85, 247, 0.35)' : 'rgba(168, 85, 247, 0.4)'}`,
+              borderRadius: 16,
+              padding: '12px 18px',
+              color: T.isLight ? '#7e22ce' : '#ffffff',
               fontSize: '13.5px',
               fontWeight: 800,
               cursor: 'pointer',
               transition: 'all 0.2s ease',
-              boxShadow: '0 4px 16px rgba(168, 85, 247, 0.2)'
+              boxShadow: T.isLight ? '0 2px 10px rgba(168, 85, 247, 0.12)' : '0 4px 18px rgba(168, 85, 247, 0.25)'
             }}
             onMouseEnter={e => {
               e.currentTarget.style.borderColor = '#c084fc';
-              e.currentTarget.style.boxShadow = '0 6px 22px rgba(168, 85, 247, 0.35)';
+              e.currentTarget.style.boxShadow = '0 6px 24px rgba(168, 85, 247, 0.4)';
               e.currentTarget.style.transform = 'translateY(-1px)';
             }}
             onMouseLeave={e => {
               e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.4)';
-              e.currentTarget.style.boxShadow = '0 4px 16px rgba(168, 85, 247, 0.2)';
+              e.currentTarget.style.boxShadow = '0 4px 18px rgba(168, 85, 247, 0.25)';
               e.currentTarget.style.transform = '';
             }}
           >
-            <Plus size={16} color="#c084fc" />
+            <Plus size={16} color={T.isLight ? '#7e22ce' : '#c084fc'} />
             <span>+ New Cinema Chat</span>
           </button>
         </div>
@@ -416,7 +466,7 @@ export default function AiPage({
           <div style={{
             fontSize: 11,
             fontWeight: 800,
-            color: '#64748b',
+            color: T.textMuted2,
             padding: '6px 8px',
             textTransform: 'uppercase',
             letterSpacing: '0.8px',
@@ -445,33 +495,32 @@ export default function AiPage({
                   padding: '10px 12px',
                   borderRadius: 12,
                   background: isActive
-                    ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.16) 0%, rgba(20, 24, 38, 0.95) 100%)'
-                    : 'rgba(255, 255, 255, 0.02)',
+                    ? T.aiSidebarSessionActive
+                    : T.aiSidebarSessionBg,
                   border: isActive
-                    ? '1.5px solid rgba(168, 85, 247, 0.45)'
-                    : '1px solid rgba(255, 255, 255, 0.05)',
-                  color: isActive ? '#f8fafc' : '#94a3b8',
+                    ? `1.5px solid ${T.aiSidebarSessionBorder}`
+                    : `1px solid ${T.border1}`,
+                  color: isActive ? (T.isLight ? '#7c3aed' : '#f8fafc') : T.textMuted1,
                   fontSize: '12.5px',
                   fontWeight: isActive ? 700 : 500,
                   cursor: 'pointer',
                   transition: 'all 0.15s ease',
-                  position: 'relative',
-                  group: 'session-row'
+                  position: 'relative'
                 }}
                 onMouseEnter={e => {
                   if (!isActive) {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)';
-                    e.currentTarget.style.color = '#e2e8f0';
+                    e.currentTarget.style.background = T.isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.06)';
+                    e.currentTarget.style.color = T.textPrimary;
                   }
                 }}
                 onMouseLeave={e => {
                   if (!isActive) {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)';
-                    e.currentTarget.style.color = '#94a3b8';
+                    e.currentTarget.style.background = T.aiSidebarSessionBg;
+                    e.currentTarget.style.color = T.textMuted1;
                   }
                 }}
               >
-                <MessageSquare size={14} color={isActive ? '#c084fc' : '#64748b'} />
+                <MessageSquare size={14} color={isActive ? '#a855f7' : T.textMuted3} />
                 <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {session.title || 'Cinema Chat'}
                 </span>
@@ -482,7 +531,7 @@ export default function AiPage({
                   style={{
                     background: 'transparent',
                     border: 'none',
-                    color: '#64748b',
+                    color: T.textMuted3,
                     cursor: 'pointer',
                     padding: 4,
                     borderRadius: 6,
@@ -497,7 +546,7 @@ export default function AiPage({
                     e.currentTarget.style.opacity = '1';
                   }}
                   onMouseLeave={e => {
-                    e.currentTarget.style.color = '#64748b';
+                    e.currentTarget.style.color = T.textMuted3;
                     e.currentTarget.style.opacity = isActive ? '1' : '0.6';
                   }}
                   title="Delete chat"
@@ -510,8 +559,8 @@ export default function AiPage({
         </div>
 
         {/* Sidebar Footer */}
-        <div style={{ padding: '16px', borderTop: '1px solid rgba(255, 255, 255, 0.06)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11, color: '#64748b' }}>
+        <div style={{ padding: '16px', borderTop: `1px solid ${T.sidebarBorder}`, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11, color: T.textMuted3 }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <Zap size={11} color="#22c55e" /> Groq 70B Fast
             </span>
@@ -551,35 +600,20 @@ export default function AiPage({
 
         {/* Top Header Bar */}
         <header style={{
-          height: 60,
+          height: 64,
           padding: '0 24px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          background: 'rgba(10, 12, 18, 0.85)',
-          backdropFilter: 'blur(20px)',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-          zIndex: 10
+          background: T.headerBg,
+          backdropFilter: 'blur(24px)',
+          borderBottom: `1px solid ${T.headerBorder}`,
+          zIndex: 10,
+          transition: 'background 0.35s ease, border-color 0.3s ease'
         }}>
-          {/* Left: Sidebar Toggle + Brand */}
+          {/* Left: Website Logo on Left + Sidebar Toggle Button on Right */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: '#a1a1aa',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                padding: 6,
-                borderRadius: 8
-              }}
-              title="Toggle Sidebar"
-            >
-              <Menu size={20} />
-            </button>
-
+            {/* 1. Website Logo First */}
             <div
               onClick={onOpenHome}
               style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
@@ -589,7 +623,7 @@ export default function AiPage({
                 src="/viam_logo.png"
                 alt="CYPR ViAM"
                 style={{
-                  height: 52,
+                  height: 48,
                   width: 'auto',
                   objectFit: 'contain',
                   filter: 'drop-shadow(0 2px 14px rgba(168,85,247,0.5))',
@@ -599,19 +633,43 @@ export default function AiPage({
                 onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
               />
             </div>
+
+            {/* 2. Sidebar Toggle Button on Right Side of Logo */}
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              style={{
+                background: T.pillBg,
+                border: `1px solid ${T.pillBorder}`,
+                color: T.textPrimary,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                transition: 'all 0.15s ease'
+              }}
+              title="Toggle Sidebar"
+              onMouseEnter={e => e.currentTarget.style.background = T.border2}
+              onMouseLeave={e => e.currentTarget.style.background = T.pillBg}
+            >
+              <Menu size={18} />
+            </button>
           </div>
 
           {/* Right Navigation & Profile */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <button
               onClick={onOpenHome}
+              className="cinema-header-pill"
               style={{
                 width: 36,
                 height: 36,
                 borderRadius: '50%',
-                background: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                color: '#e4e4e7',
+                background: T.pillBg,
+                border: `1px solid ${T.pillBorder}`,
+                color: T.pillText,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -625,51 +683,79 @@ export default function AiPage({
 
             <button
               onClick={onOpenCinema}
+              className="cinema-header-pill"
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: 6,
-                background: 'rgba(255, 85, 0, 0.12)',
-                border: '1px solid rgba(255, 85, 0, 0.3)',
-                color: '#ff7733',
+                background: T.pillBg,
+                border: `1px solid ${T.pillBorder}`,
+                color: T.pillText,
                 padding: '6px 14px',
                 borderRadius: 20,
                 fontSize: 12,
                 fontWeight: 700,
                 cursor: 'pointer'
               }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'rgba(255, 85, 0, 0.15)';
+                e.currentTarget.style.borderColor = 'rgba(255, 85, 0, 0.4)';
+                e.currentTarget.style.color = '#ff7733';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = T.pillBg;
+                e.currentTarget.style.borderColor = T.pillBorder;
+                e.currentTarget.style.color = T.pillText;
+              }}
+              title="Open 4K Cinema Theater"
             >
-              <Film size={13} />
-              <span>Cinema</span>
+              <Film size={15} color="#ff7733" />
+              <span className="mobile-text-hidden">Cinema</span>
             </button>
 
             <button
               onClick={onOpenChat}
+              className="cinema-header-pill"
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: 6,
-                background: 'rgba(34, 197, 94, 0.12)',
-                border: '1px solid rgba(34, 197, 94, 0.3)',
-                color: '#22c55e',
+                background: T.pillBg,
+                border: `1px solid ${T.pillBorder}`,
+                color: T.pillText,
                 padding: '6px 14px',
                 borderRadius: 20,
                 fontSize: 12,
                 fontWeight: 700,
                 cursor: 'pointer'
               }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'rgba(34, 197, 94, 0.12)';
+                e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.4)';
+                e.currentTarget.style.color = '#22c55e';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = T.pillBg;
+                e.currentTarget.style.borderColor = T.pillBorder;
+                e.currentTarget.style.color = T.pillText;
+              }}
+              title="Open Chatting Messenger"
             >
-              <MessageSquare size={13} />
-              <span>Chat</span>
+              <MessageSquare size={15} color="#22c55e" />
+              <span className="mobile-text-hidden">Chat</span>
             </button>
 
-            <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.1)', margin: '0 4px' }} />
+            {/* Voice Assistant */}
+            <VoiceAssistant onGlobalVoiceAction={onGlobalVoiceAction} theme={theme} />
+
+            <div style={{ width: 1, height: 20, background: T.border2, margin: '0 2px' }} />
 
             <HeaderProfileMenu
               userAccount={currentUser}
               onOpenProfile={onOpenProfile}
               onOpenHistory={onOpenProfile}
               onLogout={onLeave}
+              theme={theme}
             />
           </div>
         </header>
@@ -707,7 +793,7 @@ export default function AiPage({
                   Hello, {currentUser?.name || 'Cinephile'}
                 </div>
 
-                <div style={{ fontSize: '26px', fontWeight: 700, color: '#64748b', marginBottom: 36 }}>
+                <div style={{ fontSize: '26px', fontWeight: 700, color: T.textMuted1, marginBottom: 36 }}>
                   How can ViAM AI assist your Cinema experience today?
                 </div>
 
@@ -723,8 +809,8 @@ export default function AiPage({
                       key={idx}
                       onClick={() => handleSendMessage(item.prompt)}
                       style={{
-                        background: 'rgba(18, 21, 32, 0.75)',
-                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        background: T.aiCardBg,
+                        border: `1px solid ${T.aiCardBorder}`,
                         borderRadius: 18,
                         padding: '18px 20px',
                         cursor: 'pointer',
@@ -733,24 +819,24 @@ export default function AiPage({
                         justifyContent: 'space-between',
                         minHeight: 110,
                         transition: 'all 0.2s ease',
-                        boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                        boxShadow: T.isLight ? '0 4px 16px rgba(0,0,0,0.06)' : '0 8px 24px rgba(0,0,0,0.3)',
                         backdropFilter: 'blur(12px)'
                       }}
                       onMouseEnter={e => {
                         e.currentTarget.style.borderColor = '#c084fc';
                         e.currentTarget.style.transform = 'translateY(-2px)';
-                        e.currentTarget.style.background = 'rgba(168, 85, 247, 0.08)';
+                        e.currentTarget.style.background = T.isLight ? 'rgba(168, 85, 247, 0.08)' : 'rgba(168, 85, 247, 0.12)';
                       }}
                       onMouseLeave={e => {
-                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                        e.currentTarget.style.borderColor = T.aiCardBorder;
                         e.currentTarget.style.transform = '';
-                        e.currentTarget.style.background = 'rgba(18, 21, 32, 0.75)';
+                        e.currentTarget.style.background = T.aiCardBg;
                       }}
                     >
-                      <div style={{ fontSize: 14, fontWeight: 800, color: '#f1f5f9', marginBottom: 6 }}>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: T.textPrimary, marginBottom: 6 }}>
                         {item.title}
                       </div>
-                      <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.4 }}>
+                      <div style={{ fontSize: 12, color: T.textMuted1, lineHeight: 1.4 }}>
                         {item.subtitle}
                       </div>
                     </div>
@@ -813,29 +899,30 @@ export default function AiPage({
                   }}>
                     {isUser ? (
                       <div style={{
-                        background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%)',
-                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                        background: T.aiUserBubbleBg,
+                        border: `1px solid ${T.border3}`,
                         borderRadius: '20px 20px 4px 20px',
                         padding: '12px 18px',
-                        color: '#f8fafc',
+                        color: '#ffffff',
                         fontSize: '14px',
                         lineHeight: 1.55,
-                        boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
                         backdropFilter: 'blur(16px)'
                       }}>
                         {msg.text}
                       </div>
                     ) : (
                       <div style={{
-                        background: 'rgba(15, 18, 28, 0.75)',
-                        border: '1px solid rgba(255, 255, 255, 0.07)',
+                        background: T.aiBubbleBg,
+                        border: `1px solid ${T.aiBubbleBorder}`,
                         borderRadius: '20px 20px 20px 4px',
                         padding: '18px 22px',
-                        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.45)',
+                        color: T.textPrimary,
+                        boxShadow: T.isLight ? '0 4px 16px rgba(0, 0, 0, 0.05)' : '0 10px 30px rgba(0, 0, 0, 0.45)',
                         backdropFilter: 'blur(20px)',
                         position: 'relative'
                       }}>
-                        <FormattedAiResponse text={displayText} onPlayMovie={onOpenCinema} />
+                        <FormattedAiResponse text={displayText} onPlayMovie={onOpenCinema} theme={theme} />
 
                         {/* Animated Typewriter Cursor */}
                         {isStreamingThis && (
@@ -864,9 +951,9 @@ export default function AiPage({
                         <button
                           onClick={() => handleCopy(msg.text, msg.id)}
                           style={{
-                            background: 'rgba(255, 255, 255, 0.04)',
-                            border: '1px solid rgba(255, 255, 255, 0.08)',
-                            color: copiedId === msg.id ? '#22c55e' : '#94a3b8',
+                            background: T.pillBg,
+                            border: `1px solid ${T.pillBorder}`,
+                            color: copiedId === msg.id ? '#22c55e' : T.textMuted1,
                             cursor: 'pointer',
                             padding: '4px 10px',
                             borderRadius: 12,
@@ -886,9 +973,9 @@ export default function AiPage({
                         <button
                           onClick={() => handleSpeak(msg.text, msg.id)}
                           style={{
-                            background: 'rgba(255, 255, 255, 0.04)',
-                            border: '1px solid rgba(255, 255, 255, 0.08)',
-                            color: speakingId === msg.id ? '#38bdf8' : '#94a3b8',
+                            background: T.pillBg,
+                            border: `1px solid ${T.pillBorder}`,
+                            color: speakingId === msg.id ? '#38bdf8' : T.textMuted1,
                             cursor: 'pointer',
                             padding: '4px 10px',
                             borderRadius: 12,
@@ -908,9 +995,9 @@ export default function AiPage({
                         <button
                           onClick={() => handleSendMessage(null, true)}
                           style={{
-                            background: 'rgba(255, 255, 255, 0.04)',
-                            border: '1px solid rgba(255, 255, 255, 0.08)',
-                            color: '#94a3b8',
+                            background: T.pillBg,
+                            border: `1px solid ${T.pillBorder}`,
+                            color: T.textMuted1,
                             cursor: 'pointer',
                             padding: '4px 10px',
                             borderRadius: 12,
@@ -975,8 +1062,8 @@ export default function AiPage({
                 </div>
 
                 <div style={{
-                  background: 'rgba(15, 18, 28, 0.75)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  background: T.aiBubbleBg,
+                  border: `1px solid ${T.aiBubbleBorder}`,
                   borderRadius: '20px 20px 20px 4px',
                   padding: '16px 20px',
                   display: 'flex',
@@ -1025,7 +1112,7 @@ export default function AiPage({
           left: 0,
           right: 0,
           padding: '16px 24px 20px',
-          background: 'linear-gradient(to top, #06070a 60%, transparent 100%)',
+          background: T.aiOmnibarGradient,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -1034,14 +1121,14 @@ export default function AiPage({
           <div style={{
             maxWidth: 860,
             width: '100%',
-            background: 'rgba(18, 22, 34, 0.95)',
-            border: '1.5px solid rgba(255, 255, 255, 0.12)',
+            background: T.aiOmnibarBg,
+            border: T.aiOmnibarBorder,
             borderRadius: 28,
             padding: '10px 16px 10px 20px',
             display: 'flex',
             alignItems: 'center',
             gap: 12,
-            boxShadow: '0 16px 40px rgba(0, 0, 0, 0.6), 0 0 24px rgba(168, 85, 247, 0.15)',
+            boxShadow: T.isLight ? '0 12px 32px rgba(0, 0, 0, 0.08), 0 0 16px rgba(168, 85, 247, 0.1)' : '0 16px 40px rgba(0, 0, 0, 0.6), 0 0 24px rgba(168, 85, 247, 0.15)',
             backdropFilter: 'blur(24px)',
             transition: 'all 0.2s ease'
           }}>
@@ -1057,7 +1144,7 @@ export default function AiPage({
                 flex: 1,
                 background: 'transparent',
                 border: 'none',
-                color: '#ffffff',
+                color: T.textPrimary,
                 fontSize: 14.5,
                 outline: 'none',
                 resize: 'none',
@@ -1074,9 +1161,9 @@ export default function AiPage({
                 width: 38,
                 height: 38,
                 borderRadius: '50%',
-                background: isListening ? '#ef4444' : 'rgba(255, 255, 255, 0.06)',
-                border: 'none',
-                color: '#fff',
+                background: isListening ? '#ef4444' : T.pillBg,
+                border: `1px solid ${T.pillBorder}`,
+                color: isListening ? '#fff' : T.textPrimary,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -1098,9 +1185,9 @@ export default function AiPage({
                 borderRadius: '50%',
                 background: input.trim() && !isLoading
                   ? 'linear-gradient(135deg, #a855f7 0%, #ec4899 50%, #38bdf8 100%)'
-                  : 'rgba(255, 255, 255, 0.08)',
+                  : (T.isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.08)'),
                 border: 'none',
-                color: input.trim() && !isLoading ? '#fff' : '#64748b',
+                color: input.trim() && !isLoading ? '#fff' : (T.isLight ? '#94a3b8' : '#64748b'),
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -1114,7 +1201,7 @@ export default function AiPage({
             </button>
           </div>
 
-          <span style={{ fontSize: 11, color: '#64748b' }}>
+          <span style={{ fontSize: 11, color: T.textMuted3 }}>
             ViAM AI Cinema Genie • Powered by Groq Llama 3.3 70B • Real-time cinema sync across lounge
           </span>
         </div>

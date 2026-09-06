@@ -35,6 +35,109 @@ export default function App() {
     isPlaying: false
   });
 
+  const [theme, setTheme] = useState(() => localStorage.getItem('cypr_theme') || 'dark');
+
+  // Handle Theme switching on root element
+  useEffect(() => {
+    localStorage.setItem('cypr_theme', theme);
+    if (theme === 'light') {
+      document.body.classList.add('light-theme');
+    } else {
+      document.body.classList.remove('light-theme');
+    }
+  }, [theme]);
+
+  // Speech TTS Output Helper
+  const speakText = (text) => {
+    if ('speechSynthesis' in window && text) {
+      try {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.05;
+        utterance.pitch = 1.0;
+        window.speechSynthesis.speak(utterance);
+      } catch (e) {
+        console.warn('[Speech Synthesis Error]', e);
+      }
+    }
+  };
+
+  // Global AI Voice Intent Executor
+  const handleGlobalVoiceAction = async (parsed) => {
+    if (!parsed) return;
+
+    if (parsed.action === 'SWITCH_THEME') {
+      const newTheme = parsed.theme === 'toggle' ? (theme === 'dark' ? 'light' : 'dark') : parsed.theme;
+      setTheme(newTheme);
+      speakText(`Switched to ${newTheme} theme!`);
+    } else if (parsed.action === 'NAVIGATE') {
+      setPage(parsed.page);
+      const pageNames = { chat: 'Messenger Chat', cinema: '4K Cinema Player', home: 'Home Hub', ai: 'ViAM AI Companion', profile: 'User Profile' };
+      speakText(`Opening ${pageNames[parsed.page] || parsed.page}`);
+    } else if (parsed.action === 'SEARCH_AND_PLAY') {
+      speakText(`Searching and playing ${parsed.query} now.`);
+      setPage('cinema');
+
+      try {
+        const isAnime = /anime|naruto|doraemon|solo leveling|one piece|dragon ball|pokemon|beyblade|jujutsu|bleach|attack on titan/i.test(parsed.query);
+        const endpoint = isAnime
+          ? `${SERVER_URL}/api/search/watchanimeworld/resolve?title=${encodeURIComponent(parsed.query)}`
+          : `${SERVER_URL}/api/search/all?q=${encodeURIComponent(parsed.query)}`;
+
+        const res = await fetch(endpoint);
+        const data = await res.json();
+
+        if (isAnime && data.servers && data.servers.length > 0) {
+          const newMedia = {
+            sourceType: 'embed',
+            url: data.activeUrl || data.servers[0].url,
+            title: data.title || parsed.query,
+            servers: data.servers,
+            isPlaying: true
+          };
+          setMediaState(newMedia);
+          if (socket) socket.emit('change-media', newMedia);
+        } else if (data.movies && data.movies.length > 0) {
+          const top = data.movies[0];
+          const newMedia = {
+            sourceType: top.type || 'embed',
+            url: top.url,
+            title: top.title,
+            servers: top.servers,
+            isPlaying: true
+          };
+          setMediaState(newMedia);
+          if (socket) socket.emit('change-media', newMedia);
+        } else if (data.youtube && data.youtube.length > 0) {
+          const yt = data.youtube[0];
+          const newMedia = {
+            sourceType: 'youtube',
+            url: yt.url,
+            title: yt.title,
+            isPlaying: true
+          };
+          setMediaState(newMedia);
+          if (socket) socket.emit('change-media', newMedia);
+        }
+      } catch (err) {
+        console.error('[Voice Play Error]', err);
+      }
+    } else if (parsed.action === 'AI_QUERY') {
+      try {
+        const res = await fetch(`${SERVER_URL}/api/ai/companion`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: parsed.query, currentMovie: mediaState })
+        });
+        const data = await res.json();
+        const reply = data.reply || "I am ViAM AI, your cinema assistant.";
+        speakText(reply);
+      } catch (e) {
+        speakText("I processed your query.");
+      }
+    }
+  };
+
   // Initialize socket connection
   useEffect(() => {
     const newSocket = io(SERVER_URL, {
@@ -196,7 +299,7 @@ export default function App() {
   };
 
   // Shared props
-  const sharedProps = { currentUser, roomId, socket, roomUsers };
+  const sharedProps = { currentUser, roomId, socket, roomUsers, onGlobalVoiceAction: handleGlobalVoiceAction, theme, onToggleTheme: () => setTheme(t => t === 'dark' ? 'light' : 'dark') };
 
   return (
     <>
@@ -204,6 +307,9 @@ export default function App() {
         <ConnectPage
           onConnect={handleConnect}
           onOpenProfile={() => setPage('profile')}
+          onToggleTheme={sharedProps.onToggleTheme}
+          theme={theme}
+          onGlobalVoiceAction={sharedProps.onGlobalVoiceAction}
         />
       )}
 
@@ -228,6 +334,8 @@ export default function App() {
           onLogout={handleLeave}
           onRejoinRoom={(code) => handleConnect({ name: currentUser?.name || 'User', roomId: code })}
           onPlayShow={() => setPage('cinema')}
+          theme={theme}
+          onGlobalVoiceAction={sharedProps.onGlobalVoiceAction}
         />
       )}
 

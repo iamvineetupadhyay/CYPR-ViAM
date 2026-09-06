@@ -83,6 +83,41 @@ class RoomStore {
     }
   }
 
+  static toggleReaction(roomId, messageId, emoji, userId) {
+    const cleanId = (roomId || 'default').toLowerCase().trim();
+    const room = this.getRoom(cleanId);
+    if (!room) return {};
+
+    if (!room.messages) room.messages = [];
+    const targetId = String(messageId);
+    let msg = room.messages.find(m => String(m.id || m.timestamp) === targetId || String(m.id) === targetId || String(m.timestamp) === targetId);
+
+    if (!msg) {
+      msg = { id: targetId, reactions: {}, userReactions: {} };
+      room.messages.push(msg);
+    }
+
+    if (!msg.userReactions) msg.userReactions = {};
+    const uKey = String(userId || 'anon');
+
+    // Toggle: if user clicked the same emoji, remove it
+    if (msg.userReactions[uKey] === emoji) {
+      delete msg.userReactions[uKey];
+    } else {
+      msg.userReactions[uKey] = emoji;
+    }
+
+    // Recompute exact counts per emoji
+    const counts = {};
+    for (const em of Object.values(msg.userReactions)) {
+      if (em) {
+        counts[em] = (counts[em] || 0) + 1;
+      }
+    }
+    msg.reactions = counts;
+    return msg.reactions;
+  }
+
   static removeUserFromRoom(roomId, socketId) {
     const cleanId = (roomId || '').toLowerCase().trim();
     const room = roomsDB.get(cleanId);

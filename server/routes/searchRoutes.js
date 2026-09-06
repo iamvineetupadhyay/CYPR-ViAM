@@ -14,5 +14,7 @@ router.get('/hdhub4u/resolve', searchController.resolveHdhub4u);
 router.get('/series/servers', searchController.getSeriesServers);
 router.get('/all', searchController.searchAll);
 router.get('/neural', searchController.searchNeural);
+router.get('/watchanimeworld', searchController.searchWatchAnimeWorld);
+router.get('/watchanimeworld/resolve', searchController.resolveWatchAnimeWorld);
 
 module.exports = router;

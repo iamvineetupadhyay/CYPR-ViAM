@@ -18,10 +18,10 @@ export function detectSourceType(url) {
 
 export const CURATED_COUPLE_PICKS = [
   {
-    title: 'Big Buck Bunny (YouTube 4K Cinema)',
+    title: 'Interstellar (4K Official Trailer)',
     type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
-    category: '4K Animation'
+    url: 'https://www.youtube.com/watch?v=zSWdZVtXT7E',
+    category: 'Sci-Fi'
   },
   {
     title: 'Lofi Chill Beats - Ambient Piano',
@@ -30,16 +30,10 @@ export const CURATED_COUPLE_PICKS = [
     category: 'Vibes'
   },
   {
-    title: 'Interstellar - Main Theme (Royalty Free Cinema)',
+    title: 'Inception (Official Trailer 4K)',
     type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=UDVtMYqUAyw',
+    url: 'https://www.youtube.com/watch?v=YoHD9XEInc0',
     category: 'Sci-Fi'
-  },
-  {
-    title: 'Big Buck Bunny (Open Movie 4K Stream)',
-    type: 'direct',
-    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-    category: 'Animated'
   },
   {
     title: 'Tears of Steel (Sci-Fi 1080p Stream)',

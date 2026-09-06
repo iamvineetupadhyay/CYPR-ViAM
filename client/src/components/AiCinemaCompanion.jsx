@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Brain, Film, MessageSquare, Send, X, RefreshCw, ChevronRight, Zap, HelpCircle } from 'lucide-react';
 import { getApiUrl } from '../utils/apiUrl';
+import { getT } from '../utils/themeTokens';
 
-export default function AiCinemaCompanion({ isOpen, onClose, currentMovie, socket, roomId, currentUser }) {
+export default function AiCinemaCompanion({ isOpen, onClose, currentMovie, socket, roomId, currentUser, theme }) {
+  const currentTheme = theme || (typeof document !== 'undefined' && document.body.classList.contains('light-theme') ? 'light' : 'dark');
+  const T = getT(currentTheme);
+
   const [activeTab, setActiveTab] = useState('insights'); // 'insights' | 'ask' | 'trivia'
   const [trivia, setTrivia] = useState('');
   const [loadingTrivia, setLoadingTrivia] = useState(false);
@@ -86,28 +90,31 @@ export default function AiCinemaCompanion({ isOpen, onClose, currentMovie, socke
   if (!isOpen) return null;
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: '64px',
-      right: '16px',
-      width: '380px',
-      height: 'calc(100vh - 84px)',
-      background: 'rgba(12, 10, 9, 0.95)',
-      backdropFilter: 'blur(20px)',
-      border: '1px solid rgba(255, 85, 0, 0.25)',
-      borderRadius: '16px',
-      boxShadow: '0 20px 50px rgba(0,0,0,0.8), 0 0 20px rgba(255, 85, 0, 0.15)',
-      display: 'flex',
-      flexDirection: 'column',
-      zIndex: 100,
-      overflow: 'hidden',
-      animation: 'fadeIn 0.2s ease-out'
-    }}>
+    <div
+      className="viam-ai-companion-drawer"
+      style={{
+        position: 'fixed',
+        top: '64px',
+        right: '16px',
+        width: '380px',
+        height: 'calc(100vh - 84px)',
+        background: T.surfaceModal,
+        backdropFilter: 'blur(20px)',
+        border: '1px solid rgba(255, 85, 0, 0.25)',
+        borderRadius: '16px',
+        boxShadow: T.isLight ? '0 16px 40px rgba(0,0,0,0.12)' : '0 20px 50px rgba(0,0,0,0.8), 0 0 20px rgba(255, 85, 0, 0.15)',
+        display: 'flex',
+        flexDirection: 'column',
+        zIndex: 100,
+        overflow: 'hidden',
+        animation: 'fadeIn 0.2s ease-out'
+      }}
+    >
       {/* Header */}
       <div style={{
         padding: '14px 16px',
-        background: 'linear-gradient(135deg, rgba(255,85,0,0.15), rgba(0,0,0,0.4))',
-        borderBottom: '1px solid rgba(255,255,255,0.08)',
+        background: T.isLight ? 'rgba(255,85,0,0.08)' : 'linear-gradient(135deg, rgba(255,85,0,0.15), rgba(0,0,0,0.4))',
+        borderBottom: `1px solid ${T.borderDivider}`,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between'
@@ -122,7 +129,7 @@ export default function AiCinemaCompanion({ isOpen, onClose, currentMovie, socke
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '13px', fontWeight: '800', color: '#fff', letterSpacing: '0.3px' }}>
+              <span style={{ fontSize: '13px', fontWeight: '800', color: T.textPrimary, letterSpacing: '0.3px' }}>
                 ViAM AI Companion
               </span>
               <span style={{
@@ -132,7 +139,7 @@ export default function AiCinemaCompanion({ isOpen, onClose, currentMovie, socke
                 GROQ 70B
               </span>
             </div>
-            <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', margin: 0, textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden', maxWidth: '220px' }}>
+            <p style={{ fontSize: '10px', color: T.textMuted2, margin: 0, textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden', maxWidth: '220px' }}>
               Context: {movieTitle}
             </p>
           </div>
@@ -141,7 +148,7 @@ export default function AiCinemaCompanion({ isOpen, onClose, currentMovie, socke
         <button
           onClick={onClose}
           style={{
-            background: 'rgba(255,255,255,0.05)', border: 'none', color: '#a1a1aa',
+            background: T.pillBg, border: 'none', color: T.textMuted1,
             cursor: 'pointer', borderRadius: '50%', width: '26px', height: '26px',
             display: 'flex', alignItems: 'center', justifyContent: 'center'
           }}
@@ -153,8 +160,8 @@ export default function AiCinemaCompanion({ isOpen, onClose, currentMovie, socke
       {/* Navigation Sub-Tabs */}
       <div style={{
         display: 'flex',
-        background: 'rgba(0,0,0,0.3)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        background: T.isLight ? 'rgba(0,0,0,0.03)' : 'rgba(0,0,0,0.3)',
+        borderBottom: `1px solid ${T.borderDivider}`,
         padding: '6px'
       }}>
         <button
@@ -162,8 +169,8 @@ export default function AiCinemaCompanion({ isOpen, onClose, currentMovie, socke
           style={{
             flex: 1, padding: '6px 8px', fontSize: '11px', fontWeight: '700', borderRadius: '8px',
             border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
-            background: activeTab === 'insights' ? 'rgba(255,85,0,0.2)' : 'transparent',
-            color: activeTab === 'insights' ? '#ff5500' : 'rgba(255,255,255,0.6)'
+            background: activeTab === 'insights' ? 'rgba(255,85,0,0.18)' : 'transparent',
+            color: activeTab === 'insights' ? '#ea580c' : T.textMuted1
           }}
         >
           <Sparkles size={12} /> Trivia & Secrets
@@ -173,8 +180,8 @@ export default function AiCinemaCompanion({ isOpen, onClose, currentMovie, socke
           style={{
             flex: 1, padding: '6px 8px', fontSize: '11px', fontWeight: '700', borderRadius: '8px',
             border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
-            background: activeTab === 'ask' ? 'rgba(255,85,0,0.2)' : 'transparent',
-            color: activeTab === 'ask' ? '#ff5500' : 'rgba(255,255,255,0.6)'
+            background: activeTab === 'ask' ? 'rgba(255,85,0,0.18)' : 'transparent',
+            color: activeTab === 'ask' ? '#ea580c' : T.textMuted1
           }}
         >
           <MessageSquare size={12} /> Ask ViAM AI
@@ -193,12 +200,12 @@ export default function AiCinemaCompanion({ isOpen, onClose, currentMovie, socke
                   handleSendPrompt(`Explain the ending and hidden meaning of "${movieTitle}" without spoiling if possible, or give theory!`);
                 }}
                 style={{
-                  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                  color: '#fbbf24', borderRadius: '20px', padding: '5px 12px', fontSize: '11px',
+                  background: T.pillBg, border: `1px solid ${T.pillBorder}`,
+                  color: '#d97706', borderRadius: '20px', padding: '5px 12px', fontSize: '11px',
                   fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px'
                 }}
               >
-                <Sparkles size={12} color="#fbbf24" />
+                <Sparkles size={12} color="#d97706" />
                 <span>Explain Ending</span>
               </button>
               <button
@@ -207,12 +214,12 @@ export default function AiCinemaCompanion({ isOpen, onClose, currentMovie, socke
                   handleSendPrompt(`Who are the main cast members and what are some fun behind-the-scenes facts about "${movieTitle}"?`);
                 }}
                 style={{
-                  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                  color: '#38bdf8', borderRadius: '20px', padding: '5px 12px', fontSize: '11px',
+                  background: T.pillBg, border: `1px solid ${T.pillBorder}`,
+                  color: '#0284c7', borderRadius: '20px', padding: '5px 12px', fontSize: '11px',
                   fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px'
                 }}
               >
-                <Film size={12} color="#38bdf8" />
+                <Film size={12} color="#0284c7" />
                 <span>Cast & Easter Eggs</span>
               </button>
               <button
@@ -231,20 +238,20 @@ export default function AiCinemaCompanion({ isOpen, onClose, currentMovie, socke
 
             {/* Trivia Box */}
             <div style={{
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.08)',
+              background: T.surface2,
+              border: `1px solid ${T.border1}`,
               borderRadius: '12px',
               padding: '14px',
               fontSize: '12px',
               lineHeight: '1.6',
-              color: 'rgba(255,255,255,0.85)'
+              color: T.textPrimary
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', color: '#ff7733', fontWeight: '700' }}>
                 <Zap size={14} />
                 <span>Cinema Insight</span>
               </div>
               {loadingTrivia ? (
-                <div style={{ color: 'rgba(255,255,255,0.5)', fontStyle: 'italic', padding: '10px 0' }}>
+                <div style={{ color: T.textMuted2, fontStyle: 'italic', padding: '10px 0' }}>
                   Groq AI is digging up fascinating trivia about {movieTitle}...
                 </div>
               ) : (
@@ -264,16 +271,16 @@ export default function AiCinemaCompanion({ isOpen, onClose, currentMovie, socke
                 style={{
                   alignSelf: msg.isAI ? 'flex-start' : 'flex-end',
                   maxWidth: '88%',
-                  background: msg.isAI ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg, #ff5500, #ea580c)',
-                  border: msg.isAI ? '1px solid rgba(255,255,255,0.1)' : 'none',
+                  background: msg.isAI ? T.surface2 : 'linear-gradient(135deg, #ff5500, #ea580c)',
+                  border: msg.isAI ? `1px solid ${T.border1}` : 'none',
                   borderRadius: '12px',
                   padding: '10px 12px',
                   fontSize: '12px',
                   lineHeight: '1.5',
-                  color: '#fff'
+                  color: msg.isAI ? T.textPrimary : '#fff'
                 }}
               >
-                <div style={{ fontSize: '10px', fontWeight: '700', marginBottom: '3px', color: msg.isAI ? '#ff5500' : 'rgba(255,255,255,0.8)' }}>
+                <div style={{ fontSize: '10px', fontWeight: '700', marginBottom: '3px', color: msg.isAI ? '#ff5500' : 'rgba(255,255,255,0.9)' }}>
                   {msg.sender}
                 </div>
                 <div style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</div>
@@ -282,7 +289,7 @@ export default function AiCinemaCompanion({ isOpen, onClose, currentMovie, socke
             {isAiTyping && (
               <div style={{
                 alignSelf: 'flex-start',
-                background: 'rgba(255,255,255,0.04)',
+                background: T.pillBg,
                 borderRadius: '10px',
                 padding: '8px 12px',
                 fontSize: '11px',
@@ -301,8 +308,8 @@ export default function AiCinemaCompanion({ isOpen, onClose, currentMovie, socke
       {/* Footer Chat Bar */}
       <div style={{
         padding: '10px 12px',
-        background: 'rgba(0,0,0,0.6)',
-        borderTop: '1px solid rgba(255,255,255,0.08)'
+        background: T.surface1,
+        borderTop: `1px solid ${T.borderDivider}`
       }}>
         <form
           onSubmit={(e) => {
@@ -319,12 +326,12 @@ export default function AiCinemaCompanion({ isOpen, onClose, currentMovie, socke
             onChange={(e) => setChatInput(e.target.value)}
             style={{
               flex: 1,
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.12)',
+              background: T.inputBg,
+              border: `1px solid ${T.inputBorder}`,
               borderRadius: '8px',
               padding: '8px 12px',
               fontSize: '12px',
-              color: '#fff',
+              color: T.inputText,
               outline: 'none'
             }}
           />

@@ -3,7 +3,7 @@ import {
   Heart, Film, ArrowLeft, Copy, Check, Users, Sparkles, Search,
   X, Paperclip, Smile, Send, Subtitles, Settings, Maximize, Play, Pause,
   Volume2, Video, VideoOff, Mic, MicOff, MessageSquare, Brain, Home,
-  PhoneCall, PhoneOff, UserCheck, ShieldCheck, Zap
+  PhoneCall, PhoneOff, UserCheck, ShieldCheck, Zap, Sun, Moon
 } from 'lucide-react';
 import CinemaPlayer from '../components/CinemaPlayer';
 import SourcePicker from '../components/SourcePicker';
@@ -16,6 +16,8 @@ import AiCinemaCompanion from '../components/AiCinemaCompanion';
 import { useWebRTC } from '../hooks/useWebRTC';
 import { encryptPayload, decryptPayload } from '../utils/cryptoUtils';
 import { SERVER_URL } from '../utils/apiUrl';
+import { getT } from '../utils/themeTokens';
+
 
 export default function CinemaPage({
   currentUser,
@@ -27,8 +29,13 @@ export default function CinemaPage({
   onOpenAI,
   onMediaChange,
   mediaState: initialMedia,
-  onOpenProfile
+  onOpenProfile,
+  onGlobalVoiceAction,
+  onToggleTheme,
+  theme = 'dark'
 }) {
+  const T = getT(theme);
+
   const [mediaState, setMediaState] = useState(initialMedia || {
     sourceType: 'direct',
     url: '',
@@ -36,7 +43,7 @@ export default function CinemaPage({
     currentTime: 0,
     isPlaying: false
   });
-  const [showSourcePicker, setShowSourcePicker] = useState(false);
+  const [showSourcePicker, setShowSourcePicker] = useState(!initialMedia?.url);
   const [showAiCompanion, setShowAiCompanion] = useState(false);
   const [initialQuery, setInitialQuery] = useState('');
   const [copied, setCopied] = useState(false);
@@ -44,6 +51,13 @@ export default function CinemaPage({
   const [urlInput, setUrlInput] = useState('');
   const [showChatSidebar, setShowChatSidebar] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  // Auto-open Source Picker modal if no movie URL is set to prevent blank screen
+  useEffect(() => {
+    if (!mediaState?.url) {
+      setShowSourcePicker(true);
+    }
+  }, [mediaState?.url]);
 
   // Face-to-Face Video & Mic Request States
   const [incomingCamRequest, setIncomingCamRequest] = useState(null);
@@ -99,12 +113,50 @@ export default function CinemaPage({
           return [...prev, decrypted];
         });
 
+        // Emit delivery/seen tick to partner if received from partner
+        if (decrypted.senderId && socket?.id && decrypted.senderId !== socket.id) {
+          socket.emit('message-delivered', { messageId: decrypted.id || decrypted.timestamp, senderSocketId: decrypted.senderId });
+          socket.emit('message-seen', { messageId: decrypted.id || decrypted.timestamp, senderSocketId: decrypted.senderId });
+        }
+
         // Increment unread count if sidebar is closed
         setShowChatSidebar(current => {
           if (!current) setUnreadCount(c => c + 1);
           return current;
         });
       }
+    });
+
+    // WhatsApp Read Receipts Status Listener
+    socket.on('message-status-update', ({ messageId, status }) => {
+      setMessages(prev => prev.map(m => {
+        const isTarget = (m.id && messageId && m.id === messageId) || (m.timestamp && m.timestamp === messageId);
+        if (isTarget) {
+          return {
+            ...m,
+            delivered: true,
+            read: status === 'seen' ? true : m.read
+          };
+        }
+        return m;
+      }));
+    });
+
+    socket.on('message-deleted', ({ messageId }) => {
+      setMessages(prev => prev.map(m =>
+        (m.id === messageId || m.timestamp === messageId) ? { ...m, deleted: true } : m
+      ));
+    });
+
+    socket.on('message-reacted', ({ messageId, reactions }) => {
+      setMessages(prev => prev.map(m => {
+        const mId = String(m.id || m.timestamp);
+        const targetId = String(messageId);
+        if (mId === targetId || String(m.id) === targetId || String(m.timestamp) === targetId) {
+          return { ...m, reactions: reactions || {} };
+        }
+        return m;
+      }));
     });
 
     // Face-to-Face Video & Mic Socket Listeners
@@ -131,6 +183,9 @@ export default function CinemaPage({
       socket.off('initial-media-state');
       socket.off('initial-chat-history');
       socket.off('chat-message-received');
+      socket.off('message-status-update');
+      socket.off('message-deleted');
+      socket.off('message-reacted');
       socket.off('cinema-cam-request');
       socket.off('cinema-cam-accepted');
       socket.off('cinema-cam-declined');
@@ -143,26 +198,25 @@ export default function CinemaPage({
     setMediaState(updated);
     onMediaChange?.(updated);
 
-    const encrypted = await encryptPayload(updated, roomId);
-    socket?.emit('media-change', encrypted);
+    socket?.emit('media-change', updated);
   };
 
   const handleSendChatMessage = async (msgData) => {
     const msgId = Date.now().toString() + '-' + Math.random().toString(36).substr(2, 6);
     const payload = typeof msgData === 'string'
-      ? { id: msgId, text: msgData, senderName: currentUser?.name || 'You', timestamp: Date.now(), chatId: 'group' }
-      : { id: msgId, ...msgData, senderName: currentUser?.name || 'You', timestamp: Date.now(), chatId: 'group' };
+      ? { id: msgId, senderId: socket?.id, text: msgData, senderName: currentUser?.name || 'You', timestamp: Date.now(), chatId: 'group', target: 'group', recipientSocketId: 'group' }
+      : { id: msgId, senderId: socket?.id, ...msgData, senderName: currentUser?.name || 'You', timestamp: Date.now(), chatId: 'group', target: 'group', recipientSocketId: 'group' };
 
     setMessages((prev) => [...prev, payload]);
-    const encrypted = await encryptPayload(payload, roomId);
-    socket?.emit('chat-message', encrypted);
+    socket?.emit('chat-message', payload);
   };
 
   // Face-to-Face Cam Handlers
-  const handleRequestFaceCam = () => {
+  const handleRequestFaceCam = async () => {
     if (!socket) return;
     socket.emit('cinema-cam-request', { from: currentUser, isVideo: true, roomId });
     setCamRequestSent(true);
+    await startLocalCall(true);
     setTimeout(() => setCamRequestSent(false), 12000);
   };
 
@@ -216,34 +270,39 @@ export default function CinemaPage({
   const isVideoActive = Boolean(localStream || remoteStream || isCallConnected);
 
   return (
-    <div style={{
+    <div className="app-page-dark" style={{
       display: 'flex',
       flexDirection: 'column',
       height: '100vh',
       width: '100vw',
-      background: '#0b0806',
-      color: '#fff',
+      background: T.cinemaBg,
+      color: T.textPrimary,
       overflow: 'hidden',
       fontFamily: 'Plus Jakarta Sans, sans-serif',
-      position: 'relative'
+      position: 'relative',
+      transition: 'background 0.4s ease, color 0.35s ease'
     }}>
 
       {/* ========================================================================= */}
       {/* 1. MATURE OBSIDIAN GLASS NAVIGATION BAR */}
       {/* ========================================================================= */}
-      <div style={{
-        height: '56px',
-        background: 'rgba(9, 10, 15, 0.96)',
-        backdropFilter: 'blur(20px)',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0 18px',
-        gap: '16px',
-        zIndex: 50,
-        flexShrink: 0
-      }}>
+      <div
+        className="cinema-nav-toolbar"
+        style={{
+          height: '56px',
+          background: T.cinemaToolbarBg,
+          backdropFilter: 'blur(20px)',
+          borderBottom: `1px solid ${T.border2}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 18px',
+          gap: '16px',
+          zIndex: 50,
+          flexShrink: 0,
+          transition: 'background 0.4s ease, border-color 0.35s ease'
+        }}
+      >
         {/* Left: Brand Logo + Room Code Link Pill */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexShrink: 0 }}>
           <div
@@ -272,131 +331,132 @@ export default function CinemaPage({
             onClick={copyInvite}
             style={{
               display: 'flex', alignItems: 'center', gap: '8px',
-              background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.08)',
+              background: T.chipBg, border: `1px solid ${T.chipBorder}`,
               borderRadius: '20px', padding: '4px 12px 4px 10px', cursor: 'pointer',
-              fontSize: '12px', color: '#a1a1aa', fontWeight: '600', transition: 'all 0.15s ease'
+              fontSize: '12px', color: T.textMuted2, fontWeight: '600', transition: 'all 0.15s ease'
             }}
             title="Click to copy invite link"
-            onMouseEnter={e => { e.currentTarget.style.borderColor = '#ff5500'; e.currentTarget.style.background = 'rgba(255, 85, 0, 0.08)'; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'; e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)'; }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = T.border4; e.currentTarget.style.background = T.pillBg; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = T.chipBorder; e.currentTarget.style.background = T.chipBg; }}
           >
             <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 8px #22c55e' }} />
-            <span style={{ color: '#ff661a', fontFamily: 'monospace', fontWeight: '700', letterSpacing: '0.5px' }}>{roomId}</span>
-            {copied ? <Check size={12} color="#22c55e" /> : <Copy size={12} color="#71717a" />}
+            <span style={{ color: T.textPrimary, fontFamily: 'monospace', fontWeight: '700', letterSpacing: '0.5px' }}>{roomId}</span>
+            {copied ? <Check size={12} color="#22c55e" /> : <Copy size={12} color={T.textMuted2} />}
           </div>
         </div>
 
-        {/* Right Toolbar: Icon-First Actions with Tooltips */}
+        {/* Right Toolbar: Exact Clean "4 Pills + 1 Mic" Layout */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-          
-          {/* Movie Source Picker Chip */}
+
+          {/* Pill 1: Choose Movie */}
           <button
+            className="cinema-header-pill"
             onClick={() => setShowSourcePicker(true)}
             style={{
-              display: 'flex', alignItems: 'center', gap: '6px',
-              background: 'rgba(255, 85, 0, 0.14)', border: '1px solid rgba(255, 85, 0, 0.35)',
-              borderRadius: '20px', padding: '5px 12px', color: '#fff', fontSize: '12px',
-              fontWeight: '700', cursor: 'pointer', transition: 'all 0.15s ease'
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255, 85, 0, 0.25)'; e.currentTarget.style.boxShadow = '0 0 14px rgba(255,85,0,0.3)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255, 85, 0, 0.14)'; e.currentTarget.style.boxShadow = 'none'; }}
-            title="Browse Movies & Streaming Sources"
-          >
-            <Film size={14} color="#ff7733" />
-            <span>Search Movies</span>
-          </button>
-
-          {/* Voice Assistant Mic */}
-          <VoiceAssistant onCommand={handleVoiceCommand} onSearchMovie={() => setShowSourcePicker(true)} />
-
-          {/* ViAM AI Movie Companion Toggle */}
-          <button
-            onClick={() => setShowAiCompanion(!showAiCompanion)}
-            style={{
-              width: '34px', height: '34px', borderRadius: '50%',
-              background: showAiCompanion ? 'rgba(255, 85, 0, 0.22)' : 'rgba(255, 255, 255, 0.05)',
-              border: showAiCompanion ? '1px solid #ff5500' : '1px solid rgba(255, 255, 255, 0.1)',
-              color: showAiCompanion ? '#ff5500' : 'rgba(255, 255, 255, 0.8)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', transition: 'all 0.15s ease',
-              boxShadow: showAiCompanion ? '0 0 16px rgba(255,85,0,0.35)' : 'none'
-            }}
-            title="Toggle ViAM AI Movie Genie"
-          >
-            <Sparkles size={16} color={showAiCompanion ? '#ff5500' : '#a1a1aa'} />
-          </button>
-
-          {/* Dedicated Gemini AI Page Switcher */}
-          <button
-            onClick={onOpenAI}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '5px',
-              background: 'rgba(168, 85, 247, 0.12)', border: '1px solid rgba(168, 85, 247, 0.3)',
-              borderRadius: '20px', padding: '5px 12px', color: '#c084fc', fontSize: '12px',
-              fontWeight: '700', cursor: 'pointer', transition: 'all 0.15s ease'
-            }}
-            title="Open Full Gemini-Style Cinema AI Deck"
-            onMouseEnter={e => { e.currentTarget.style.background = '#a855f7'; e.currentTarget.style.color = '#fff'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(168, 85, 247, 0.12)'; e.currentTarget.style.color = '#c084fc'; }}
-          >
-            <Brain size={14} />
-            <span>ViAM AI</span>
-          </button>
-
-          {/* Home Hub Switcher */}
-          <button
-            onClick={onBack}
-            style={{
-              width: '34px', height: '34px', borderRadius: '50%',
-              background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)',
-              color: 'rgba(255, 255, 255, 0.8)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              display: 'flex', alignItems: 'center', gap: '8px',
+              height: '36px', padding: '0 14px', borderRadius: '20px',
+              background: T.pillBg,
+              border: `1px solid ${T.pillBorder}`,
+              color: T.pillText, fontSize: '13px', fontWeight: '700',
               cursor: 'pointer', transition: 'all 0.15s ease'
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#fff'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'rgba(255, 255, 255, 0.8)'; }}
-            title="Return to Lounge Home Hub"
+            onMouseEnter={e => {
+              e.currentTarget.style.background = 'rgba(255, 85, 0, 0.15)';
+              e.currentTarget.style.borderColor = 'rgba(255, 85, 0, 0.4)';
+              e.currentTarget.style.color = '#ff7733';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = T.pillBg;
+              e.currentTarget.style.borderColor = T.pillBorder;
+              e.currentTarget.style.color = T.pillText;
+            }}
+            title="Browse & Choose Movies"
           >
-            <Home size={15} />
+            <Film size={15} color="#ff7733" />
+            <span className="cinema-pill-text">Choose Movie</span>
           </button>
 
-          {/* Chat Sidebar Toggle in Navbar */}
+          {/* Pill 2: Lounge Chat */}
           <button
+            className="cinema-header-pill"
             onClick={() => {
-              setShowChatSidebar(prev => !prev);
               setUnreadCount(0);
+              onOpenChat?.();
             }}
             style={{
-              width: '34px', height: '34px', borderRadius: '50%',
-              background: showChatSidebar ? 'rgba(34, 197, 94, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-              border: showChatSidebar ? '1px solid rgba(34, 197, 94, 0.4)' : '1px solid rgba(255, 255, 255, 0.1)',
-              color: showChatSidebar ? '#22c55e' : 'rgba(255, 255, 255, 0.8)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', transition: 'all 0.15s ease',
-              position: 'relative'
+              display: 'flex', alignItems: 'center', gap: '8px',
+              height: '36px', padding: '0 14px', borderRadius: '20px',
+              background: T.pillBg,
+              border: `1px solid ${T.pillBorder}`,
+              color: T.pillText, fontSize: '13px', fontWeight: '600',
+              cursor: 'pointer', transition: 'all 0.15s ease', position: 'relative'
             }}
-            title="Toggle Cinema Chat Sidebar"
+            onMouseEnter={e => {
+              e.currentTarget.style.background = 'rgba(34, 197, 94, 0.12)';
+              e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.4)';
+              e.currentTarget.style.color = '#22c55e';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = T.pillBg;
+              e.currentTarget.style.borderColor = T.pillBorder;
+              e.currentTarget.style.color = T.pillText;
+            }}
+            title="Open Full Chatting Messenger Page"
           >
-            <MessageSquare size={15} />
+            <MessageSquare size={15} color="#22c55e" />
+            <span className="cinema-pill-text">Lounge Chat</span>
             {unreadCount > 0 && (
               <span style={{
-                position: 'absolute', top: -2, right: -2, width: 14, height: 14,
-                borderRadius: '50%', background: '#ff5500', color: '#fff',
-                fontSize: '9px', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center'
+                background: '#22c55e', color: '#fff',
+                fontSize: '9.5px', fontWeight: 800, padding: '1px 6px',
+                borderRadius: '10px'
               }}>
                 {unreadCount}
               </span>
             )}
           </button>
 
-          <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.1)', margin: '0 2px' }} />
+          {/* +1 Mic: Voice Assistant Mic */}
+          <VoiceAssistant onCommand={handleVoiceCommand} onSearchMovie={() => setShowSourcePicker(true)} onGlobalVoiceAction={onGlobalVoiceAction} theme={theme} />
 
-          {/* Compact Profile Chip */}
+          {/* Pill 3: ViAM AI Navigation */}
+          <button
+            className="cinema-header-pill"
+            onClick={onOpenAI}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              height: '36px', padding: '0 14px', borderRadius: '20px',
+              background: 'rgba(168, 85, 247, 0.15)',
+              border: '1px solid rgba(168, 85, 247, 0.4)',
+              color: T.pillText, fontSize: '13px', fontWeight: '700',
+              cursor: 'pointer', transition: 'all 0.15s ease'
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = 'rgba(168, 85, 247, 0.25)';
+              e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.6)';
+              e.currentTarget.style.color = '#c084fc';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'rgba(168, 85, 247, 0.15)';
+              e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.4)';
+              e.currentTarget.style.color = T.pillText;
+            }}
+            title="Open ViAM AI Gemini Companion Interface"
+          >
+            <Sparkles size={15} color="#c084fc" />
+            <span className="cinema-pill-text">ViAM AI</span>
+          </button>
+
+          {/* Vertical Divider */}
+          <div style={{ width: '1px', height: '20px', background: T.border2, margin: '0 2px' }} />
+
+          {/* Pill 4: User Profile Menu */}
           <HeaderProfileMenu
             userAccount={currentUser}
             onOpenProfile={onOpenProfile}
             onOpenHistory={onOpenProfile}
             onLogout={onBack}
+            theme={theme}
           />
         </div>
       </div>
@@ -416,18 +476,21 @@ export default function CinemaPage({
             onOpenSourcePicker={() => setShowSourcePicker(true)}
             onMediaChange={handleSelectMedia}
           >
-            {/* Floating WebRTC Duo Webcams (Face-to-Face Live Overlay) */}
-            <VideoCall
-              localStream={localStream}
-              remoteStream={remoteStream}
-              isMicMuted={isMicMuted}
-              isCamOff={isCamOff}
-              toggleMic={toggleMic}
-              toggleCam={toggleCam}
-              isCallConnected={isCallConnected}
-              peerName={peerName}
-              currentUser={currentUser}
-            />
+            {/* Floating WebRTC Duo Webcams (Face-to-Face Live Overlay on Player ONLY IF Sidebar is Closed) */}
+            {!showChatSidebar && isVideoActive && (
+              <VideoCall
+                layoutMode="floating"
+                localStream={localStream}
+                remoteStream={remoteStream}
+                isMicMuted={isMicMuted}
+                isCamOff={isCamOff}
+                toggleMic={toggleMic}
+                toggleCam={toggleCam}
+                isCallConnected={isCallConnected}
+                peerName={peerName}
+                currentUser={currentUser}
+              />
+            )}
           </CinemaPlayer>
 
           {/* 🌟 FLOATING ICON-ONLY TOGGLE BUTTON TO RE-OPEN CHAT WHEN CUT/COLLAPSED */}
@@ -587,20 +650,25 @@ export default function CinemaPage({
 
         {/* RIGHT COLUMN: LIVE CINEMA CHAT SIDEBAR WITH TOP VIDEO/MIC CONTROLS */}
         {showChatSidebar && (
-          <div style={{
-            width: '330px', height: '100%', background: '#09090b',
-            borderLeft: '1px solid rgba(255,255,255,0.08)',
-            display: 'flex', flexDirection: 'column', flexShrink: 0,
-            overflow: 'hidden', position: 'relative'
-          }}>
+          <div
+            className="cinema-mobile-chat-overlay"
+            style={{
+              width: '330px', height: '100%', background: T.cinemaSidebarBg,
+              borderLeft: `1px solid ${T.border2}`,
+              display: 'flex', flexDirection: 'column', flexShrink: 0,
+              overflow: 'hidden', position: 'relative',
+              transition: 'background 0.35s ease, border-color 0.3s ease'
+            }}
+          >
             {/* Header with Face-to-Face Video/Mic Trigger */}
             <div style={{
               height: '52px', padding: '0 12px',
-              background: 'rgba(12, 14, 20, 0.98)', borderBottom: '1px solid rgba(255,255,255,0.08)',
+              background: T.cinemaHeaderBg, borderBottom: `1px solid ${T.border2}`,
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              flexShrink: 0, gap: '8px'
+              flexShrink: 0, gap: '8px',
+              transition: 'background 0.35s ease'
             }}>
-              <span style={{ fontSize: '12px', fontWeight: '800', color: '#f4f4f5', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '12px', fontWeight: '800', color: T.textPrimary, display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <MessageSquare size={14} color="#ff5500" />
                 Live Chat
               </span>
@@ -673,17 +741,33 @@ export default function CinemaPage({
                 <button
                   onClick={() => setShowChatSidebar(false)}
                   style={{
-                    background: 'transparent', border: 'none', color: '#71717a',
+                    background: 'transparent', border: 'none', color: T.textMuted2,
                     cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px', borderRadius: '6px'
                   }}
-                  onMouseEnter={e => e.currentTarget.style.color = '#fff'}
-                  onMouseLeave={e => e.currentTarget.style.color = '#71717a'}
+                  onMouseEnter={e => e.currentTarget.style.color = T.textPrimary}
+                  onMouseLeave={e => e.currentTarget.style.color = T.textMuted2}
                   title="Hide Chat Sidebar (Click floating button to restore)"
                 >
                   <X size={15} />
                 </button>
               </div>
             </div>
+
+            {/* 🌟 RECTANGULAR / SQUARE LIVE WEBCAM VIDEO CARDS (Below Live Chat Header, Above Encryption) */}
+            {isVideoActive && (
+              <VideoCall
+                layoutMode="sidebar"
+                localStream={localStream}
+                remoteStream={remoteStream}
+                isMicMuted={isMicMuted}
+                isCamOff={isCamOff}
+                toggleMic={toggleMic}
+                toggleCam={toggleCam}
+                isCallConnected={isCallConnected}
+                peerName={peerName}
+                currentUser={currentUser}
+              />
+            )}
 
             {/* Messages Stream Area */}
             <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -692,6 +776,7 @@ export default function CinemaPage({
                 setMessages={setMessages}
                 currentUser={currentUser}
                 socket={socket}
+                theme={theme}
               />
             </div>
 
@@ -703,6 +788,7 @@ export default function CinemaPage({
                 currentUser={currentUser}
                 partnerName={peerName}
                 compact={true}
+                theme={theme}
               />
             </div>
           </div>
@@ -716,6 +802,7 @@ export default function CinemaPage({
         onClose={() => { setShowSourcePicker(false); setInitialQuery(''); }}
         onSelectMedia={handleSelectMedia}
         initialQuery={initialQuery}
+        theme={theme}
       />
 
       {/* Groq AI Cinema Companion Floating Drawer */}
@@ -726,6 +813,7 @@ export default function CinemaPage({
         socket={socket}
         roomId={roomId}
         currentUser={currentUser}
+        theme={theme}
       />
     </div>
   );

@@ -4,6 +4,7 @@ import {
   AlertCircle, ArrowRight, Camera, UserPlus, LogIn, Sparkles, ShieldCheck, Key
 } from 'lucide-react';
 import { SERVER_URL } from '../utils/apiUrl';
+import { getT } from '../utils/themeTokens';
 
 const AVATAR_PRESETS = [
   'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
@@ -13,7 +14,9 @@ const AVATAR_PRESETS = [
   'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=200&q=80'
 ];
 
-export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, initialTab = 'signup' }) {
+export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, initialTab = 'signup', theme }) {
+  const currentTheme = theme || (typeof document !== 'undefined' && document.body.classList.contains('light-theme') ? 'light' : 'dark');
+  const T = getT(currentTheme);
   const [tab, setTab] = useState(initialTab); // 'login' | 'signup'
 
   const notifySuccess = (user) => {
@@ -198,17 +201,17 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, i
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 10000,
-      background: 'rgba(5, 5, 7, 0.85)', backdropFilter: 'blur(16px)',
+      background: T.isLight ? 'rgba(30, 24, 18, 0.6)' : 'rgba(5, 5, 7, 0.85)', backdropFilter: 'blur(16px)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: '16px'
     }}>
       <div style={{
         width: '100%', maxWidth: '440px',
-        background: '#09090b', border: '1px solid rgba(255, 255, 255, 0.1)',
+        background: T.surfaceModal, border: `1px solid ${T.border}`,
         borderRadius: '20px', padding: '28px',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.9)',
+        boxShadow: T.isLight ? '0 25px 50px -12px rgba(0, 0, 0, 0.18)' : '0 25px 50px -12px rgba(0, 0, 0, 0.9)',
         position: 'relative', maxHeight: '90vh', overflowY: 'auto',
-        color: '#f4f4f5'
+        color: T.textPrimary
       }}>
         {/* Close Button */}
         <button
@@ -216,13 +219,13 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, i
           style={{
             position: 'absolute', top: '18px', right: '18px',
             background: 'transparent', border: 'none',
-            color: '#71717a', borderRadius: '50%',
+            color: T.textMuted1, borderRadius: '50%',
             width: '30px', height: '30px', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             transition: 'color 0.15s'
           }}
-          onMouseEnter={e => e.currentTarget.style.color = '#fff'}
-          onMouseLeave={e => e.currentTarget.style.color = '#71717a'}
+          onMouseEnter={e => e.currentTarget.style.color = T.textPrimary}
+          onMouseLeave={e => e.currentTarget.style.color = T.textMuted1}
         >
           <X size={18} />
         </button>
@@ -230,7 +233,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, i
         {/* Header Logo */}
         <div style={{ textAlign: 'center', marginBottom: '20px' }}>
           <img src="/viam_logo.png" alt="VIAM" style={{ height: '56px', width: 'auto', marginBottom: '8px', objectFit: 'contain' }} />
-          <h2 style={{ fontSize: '18px', fontWeight: '700', color: '#ffffff', margin: 0, letterSpacing: '-0.3px' }}>
+          <h2 style={{ fontSize: '18px', fontWeight: '700', color: T.textPrimary, margin: 0, letterSpacing: '-0.3px' }}>
             {tab === 'signup' ? 'Create Account' : 'Welcome Back'}
           </h2>
         </div>
@@ -238,7 +241,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, i
         {/* Tab Switcher */}
         <div style={{
           display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px',
-          background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)',
+          background: T.surface1, border: `1px solid ${T.border}`,
           padding: '4px', borderRadius: '12px', marginBottom: '20px'
         }}>
           <button
@@ -247,7 +250,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, i
             style={{
               height: '38px', borderRadius: '9px', border: 'none',
               background: tab === 'signup' ? '#ff5500' : 'transparent',
-              color: tab === 'signup' ? '#ffffff' : '#a1a1aa',
+              color: tab === 'signup' ? '#ffffff' : T.textMuted1,
               fontWeight: '700', fontSize: '13px', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
               boxShadow: tab === 'signup' ? '0 0 14px rgba(255,85,0,0.3)' : 'none',
@@ -263,7 +266,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, i
             style={{
               height: '38px', borderRadius: '9px', border: 'none',
               background: tab === 'login' ? '#ff5500' : 'transparent',
-              color: tab === 'login' ? '#ffffff' : '#a1a1aa',
+              color: tab === 'login' ? '#ffffff' : T.textMuted1,
               fontWeight: '700', fontSize: '13px', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
               boxShadow: tab === 'login' ? '0 0 14px rgba(255,85,0,0.3)' : 'none',
@@ -310,8 +313,8 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, i
                   alt="Profile Avatar"
                   style={{
                     width: '72px', height: '72px', borderRadius: '50%',
-                    objectFit: 'cover', border: '2px solid #27272a',
-                    background: '#141417'
+                    objectFit: 'cover', border: `2px solid ${T.border}`,
+                    background: T.surface1
                   }}
                   onError={(e) => {
                     e.currentTarget.src = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80';
@@ -322,9 +325,9 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, i
                   style={{
                     position: 'absolute', bottom: '0', right: '0',
                     width: '24px', height: '24px', borderRadius: '50%',
-                    background: '#27272a', color: '#fff',
+                    background: T.surface2, color: T.textPrimary,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: 'pointer', border: '2px solid #09090b'
+                    cursor: 'pointer', border: `2px solid ${T.surfaceModal}`
                   }}
                 >
                   <Camera size={12} />
@@ -336,8 +339,8 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, i
                 style={{
                   width: '100%', height: '34px', fontSize: '11px',
                   borderRadius: '8px', padding: '0 10px', textAlign: 'center',
-                  background: '#141417', border: '1px solid #27272a',
-                  color: '#a1a1aa', outline: 'none'
+                  background: T.inputBg, border: `1px solid ${T.border}`,
+                  color: T.textMuted1, outline: 'none'
                 }}
                 placeholder="Paste avatar URL (optional)"
                 value={customAvatarUrl}
@@ -347,67 +350,67 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, i
 
             {/* FULL NAME */}
             <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: T.textMuted2, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
                 Full Name *
               </label>
               <div style={{ position: 'relative' }}>
                 <input
                   type="text"
                   style={{
-                    width: '100%', height: '42px', background: '#141417',
-                    border: '1px solid #27272a', borderRadius: '10px',
+                    width: '100%', height: '42px', background: T.inputBg,
+                    border: `1px solid ${T.border}`, borderRadius: '10px',
                     paddingLeft: '38px', paddingRight: '14px', fontSize: '14px',
-                    color: '#fff', outline: 'none'
+                    color: T.textPrimary, outline: 'none'
                   }}
                   placeholder="e.g. Vineet Sharma"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
                 />
-                <User size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#71717a' }} />
+                <User size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: T.textMuted2 }} />
               </div>
             </div>
 
             {/* Gender & Phone */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: T.textMuted2, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
                   Gender
                 </label>
                 <select
                   value={gender}
                   onChange={(e) => setGender(e.target.value)}
                   style={{
-                    width: '100%', height: '42px', background: '#141417',
-                    border: '1px solid #27272a', borderRadius: '10px',
-                    padding: '0 10px', color: '#fff', fontSize: '13px', outline: 'none'
+                    width: '100%', height: '42px', background: T.inputBg,
+                    border: `1px solid ${T.border}`, borderRadius: '10px',
+                    padding: '0 10px', color: T.textPrimary, fontSize: '13px', outline: 'none'
                   }}
                 >
-                  <option value="Male" style={{ background: '#141417' }}>Male</option>
-                  <option value="Female" style={{ background: '#141417' }}>Female</option>
-                  <option value="Non-binary" style={{ background: '#141417' }}>Non-binary</option>
-                  <option value="Other" style={{ background: '#141417' }}>Other</option>
+                  <option value="Male" style={{ background: T.surfaceModal, color: T.textPrimary }}>Male</option>
+                  <option value="Female" style={{ background: T.surfaceModal, color: T.textPrimary }}>Female</option>
+                  <option value="Non-binary" style={{ background: T.surfaceModal, color: T.textPrimary }}>Non-binary</option>
+                  <option value="Other" style={{ background: T.surfaceModal, color: T.textPrimary }}>Other</option>
                 </select>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: T.textMuted2, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
                   Phone Number
                 </label>
                 <div style={{ position: 'relative' }}>
                   <input
                     type="tel"
                     style={{
-                      width: '100%', height: '42px', background: '#141417',
-                      border: '1px solid #27272a', borderRadius: '10px',
+                      width: '100%', height: '42px', background: T.inputBg,
+                      border: `1px solid ${T.border}`, borderRadius: '10px',
                       paddingLeft: '34px', paddingRight: '10px', fontSize: '13px',
-                      color: '#fff', outline: 'none'
+                      color: T.textPrimary, outline: 'none'
                     }}
                     placeholder="+91 9876543210"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                   />
-                  <Phone size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#71717a' }} />
+                  <Phone size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: T.textMuted2 }} />
                 </div>
               </div>
             </div>
@@ -415,7 +418,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, i
             {/* DOB & Favourite Genre */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: T.textMuted2, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
                   Date of Birth
                 </label>
                 <input
@@ -423,28 +426,28 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, i
                   value={dob}
                   onChange={(e) => setDob(e.target.value)}
                   style={{
-                    width: '100%', height: '42px', background: '#141417',
-                    border: '1px solid #27272a', borderRadius: '10px',
-                    padding: '0 10px', color: '#fff', fontSize: '13px',
-                    outline: 'none', colorScheme: 'dark', boxSizing: 'border-box'
+                    width: '100%', height: '42px', background: T.inputBg,
+                    border: `1px solid ${T.border}`, borderRadius: '10px',
+                    padding: '0 10px', color: T.textPrimary, fontSize: '13px',
+                    outline: 'none', colorScheme: T.isLight ? 'light' : 'dark', boxSizing: 'border-box'
                   }}
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: T.textMuted2, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
                   Favourite Genre
                 </label>
                 <select
                   value={favoriteGenre}
                   onChange={(e) => setFavoriteGenre(e.target.value)}
                   style={{
-                    width: '100%', height: '42px', background: '#141417',
-                    border: '1px solid #27272a', borderRadius: '10px',
-                    padding: '0 10px', color: '#fff', fontSize: '13px', outline: 'none'
+                    width: '100%', height: '42px', background: T.inputBg,
+                    border: `1px solid ${T.border}`, borderRadius: '10px',
+                    padding: '0 10px', color: T.textPrimary, fontSize: '13px', outline: 'none'
                   }}
                 >
                   {['Action', 'Sci-Fi', 'Romance', 'Horror', 'Comedy', 'Thriller', 'Anime', 'Drama', 'Documentary', 'Fantasy'].map(g => (
-                    <option key={g} value={g} style={{ background: '#141417' }}>{g}</option>
+                    <option key={g} value={g} style={{ background: T.surfaceModal, color: T.textPrimary }}>{g}</option>
                   ))}
                 </select>
               </div>
@@ -452,7 +455,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, i
 
             {/* Bio */}
             <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: T.textMuted2, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
                 Short Bio (optional)
               </label>
               <textarea
@@ -461,8 +464,8 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, i
                 placeholder="Tell your co-watch partner about yourself..."
                 rows={2}
                 style={{
-                  width: '100%', background: '#141417', border: '1px solid #27272a',
-                  borderRadius: '10px', padding: '10px 14px', color: '#fff',
+                  width: '100%', background: T.inputBg, border: `1px solid ${T.border}`,
+                  borderRadius: '10px', padding: '10px 14px', color: T.textPrimary,
                   fontSize: '13px', outline: 'none', resize: 'none',
                   lineHeight: '1.5', boxSizing: 'border-box'
                 }}
@@ -471,7 +474,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, i
 
             {/* Email & OTP */}
             <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: T.textMuted2, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
                 Email Address *
               </label>
               <div style={{ display: 'flex', gap: '8px' }}>
@@ -479,30 +482,30 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, i
                   <input
                     type="email"
                     style={{
-                      width: '100%', height: '42px', background: '#141417',
-                      border: '1px solid #27272a', borderRadius: '10px',
+                      width: '100%', height: '42px', background: T.inputBg,
+                      border: `1px solid ${T.border}`, borderRadius: '10px',
                       paddingLeft: '38px', paddingRight: '14px', fontSize: '13px',
-                      color: '#fff', outline: 'none'
+                      color: T.textPrimary, outline: 'none'
                     }}
                     placeholder="you@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
                   />
-                  <Mail size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#71717a' }} />
+                  <Mail size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: T.textMuted2 }} />
                 </div>
                 <button
                   type="button"
                   onClick={handleSendOtp}
                   disabled={loading}
                   style={{
-                    height: '42px', background: '#27272a', border: 'none',
-                    color: '#fff', borderRadius: '10px', padding: '0 14px',
+                    height: '42px', background: T.surface2, border: `1px solid ${T.border}`,
+                    color: T.textPrimary, borderRadius: '10px', padding: '0 14px',
                     fontSize: '12px', fontWeight: '600', cursor: 'pointer',
                     whiteSpace: 'nowrap', flexShrink: 0, transition: 'background 0.15s'
                   }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#3f3f46'}
-                  onMouseLeave={e => e.currentTarget.style.background = '#27272a'}
+                  onMouseEnter={e => e.currentTarget.style.background = T.surface3}
+                  onMouseLeave={e => e.currentTarget.style.background = T.surface2}
                 >
                   {otpSent ? 'Resend' : 'Send OTP'}
                 </button>
@@ -511,17 +514,17 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, i
 
             {/* OTP Entry */}
             {otpSent && (
-              <div style={{ background: '#141417', border: '1px solid #27272a', padding: '12px', borderRadius: '10px' }}>
+              <div style={{ background: T.surface1, border: `1px solid ${T.border}`, padding: '12px', borderRadius: '10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <label style={{ fontSize: '11px', fontWeight: '600', color: '#a1a1aa', textTransform: 'uppercase' }}>6-Digit OTP</label>
-                  <span style={{ fontSize: '10px', color: '#71717a' }}>Check inbox</span>
+                  <label style={{ fontSize: '11px', fontWeight: '600', color: T.textMuted2, textTransform: 'uppercase' }}>6-Digit OTP</label>
+                  <span style={{ fontSize: '10px', color: T.textMuted3 }}>Check inbox</span>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <input
                     type="text"
                     style={{
-                      flex: 1, height: '38px', background: '#09090b',
-                      border: '1px solid #27272a', borderRadius: '8px',
+                      flex: 1, height: '38px', background: T.inputBg,
+                      border: `1px solid ${T.border}`, borderRadius: '8px',
                       textTransform: 'uppercase', letterSpacing: '4px', fontWeight: '700',
                       fontSize: '15px', textAlign: 'center', color: '#ff5500', outline: 'none'
                     }}
@@ -549,17 +552,17 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, i
 
             {/* Password */}
             <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: T.textMuted2, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
                 Password *
               </label>
               <div style={{ position: 'relative' }}>
                 <input
                   type="password"
                   style={{
-                    width: '100%', height: '42px', background: '#141417',
-                    border: '1px solid #27272a', borderRadius: '10px',
+                    width: '100%', height: '42px', background: T.inputBg,
+                    border: `1px solid ${T.border}`, borderRadius: '10px',
                     paddingLeft: '38px', paddingRight: '14px', fontSize: '14px',
-                    color: '#fff', outline: 'none'
+                    color: T.textPrimary, outline: 'none'
                   }}
                   placeholder="••••••••"
                   value={password}
@@ -567,7 +570,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, i
                   minLength={6}
                   required
                 />
-                <Lock size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#71717a' }} />
+                <Lock size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: T.textMuted2 }} />
               </div>
             </div>
 
@@ -595,46 +598,46 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, i
         {tab === 'login' && (
           <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: T.textMuted2, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
                 Email Address
               </label>
               <div style={{ position: 'relative' }}>
                 <input
                   type="email"
                   style={{
-                    width: '100%', height: '42px', background: '#141417',
-                    border: '1px solid #27272a', borderRadius: '10px',
+                    width: '100%', height: '42px', background: T.inputBg,
+                    border: `1px solid ${T.border}`, borderRadius: '10px',
                     paddingLeft: '38px', paddingRight: '14px', fontSize: '14px',
-                    color: '#fff', outline: 'none'
+                    color: T.textPrimary, outline: 'none'
                   }}
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                 />
-                <Mail size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#71717a' }} />
+                <Mail size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: T.textMuted2 }} />
               </div>
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: T.textMuted2, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
                 Password
               </label>
               <div style={{ position: 'relative' }}>
                 <input
                   type="password"
                   style={{
-                    width: '100%', height: '42px', background: '#141417',
-                    border: '1px solid #27272a', borderRadius: '10px',
+                    width: '100%', height: '42px', background: T.inputBg,
+                    border: `1px solid ${T.border}`, borderRadius: '10px',
                     paddingLeft: '38px', paddingRight: '14px', fontSize: '14px',
-                    color: '#fff', outline: 'none'
+                    color: T.textPrimary, outline: 'none'
                   }}
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
-                <Lock size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#71717a' }} />
+                <Lock size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: T.textMuted2 }} />
               </div>
             </div>
 

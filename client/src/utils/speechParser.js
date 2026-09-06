@@ -1,17 +1,45 @@
 /**
- * CYPR ViAM Instant Smart Intent Parser
- * Operates offline / zero-latency / unlimited forever without paid APIs.
- * Supports English and Hinglish conversational commands.
+ * CYPR ViAM Advanced AI Voice Intent Parser
+ * Supports English & Hinglish conversational commands.
+ * Handles Play, Navigation, Theme Switching, Controls, and AI Questions.
  */
 
 export function parseVoiceCommand(transcript) {
   if (!transcript || typeof transcript !== 'string') return null;
 
   const text = transcript.trim().toLowerCase();
-  console.log('[CYPR Voice Engine] Heard:', text);
+  console.log('[CYPR Voice AI Engine] Heard:', text);
 
-  // 1. Play / Start specific movie or video
-  // e.g. "play interstellar", "chalao pathaan", "play song kesariya", "lagao pushpa"
+  // 1. Theme Switching Commands ("switch to light theme", "light mode", "dark theme", "dark mode karo")
+  if (/switch to light|light mode|light theme|white theme|light mode karo|enable light/i.test(text)) {
+    return { action: 'SWITCH_THEME', theme: 'light' };
+  }
+  if (/switch to dark|dark mode|dark theme|black theme|dark mode karo|enable dark/i.test(text)) {
+    return { action: 'SWITCH_THEME', theme: 'dark' };
+  }
+  if (/toggle theme|change theme|theme badlo/i.test(text)) {
+    return { action: 'SWITCH_THEME', theme: 'toggle' };
+  }
+
+  // 2. Navigation Commands ("open message", "open messenger", "open chat", "open cinema", "open home", "open ai")
+  if (/(?:open|go to|show|kholo)\s*(?:message|messages|messenger|chat|chats|chatting|inbox)/i.test(text) || /^(chat|messenger|message)$/i.test(text)) {
+    return { action: 'NAVIGATE', page: 'chat' };
+  }
+  if (/(?:open|go to|show|kholo)\s*(?:cinema|theater|theatre|player|movie page)/i.test(text) || /^(cinema|theater)$/i.test(text)) {
+    return { action: 'NAVIGATE', page: 'cinema' };
+  }
+  if (/(?:open|go to|show|kholo)\s*(?:home|home page|main page|hub)/i.test(text) || /^(home)$/i.test(text)) {
+    return { action: 'NAVIGATE', page: 'home' };
+  }
+  if (/(?:open|go to|show|kholo|talk to)\s*(?:ai|viam ai|companion|gemini|bot)/i.test(text) || /^(ai|viam)$/i.test(text)) {
+    return { action: 'NAVIGATE', page: 'ai' };
+  }
+  if (/(?:open|go to|show|kholo)\s*(?:profile|my profile|settings|account)/i.test(text) || /^(profile)$/i.test(text)) {
+    return { action: 'NAVIGATE', page: 'profile' };
+  }
+
+  // 3. Play / Start specific movie or anime
+  // e.g. "play interstellar", "chalao pathaan", "watch doraemon", "play solo leveling"
   const playMatch = text.match(/^(?:play|chalao|lagao|start|watch|dekhna hai|dekho)\s+(.+)$/i);
   if (playMatch) {
     return {
@@ -20,8 +48,8 @@ export function parseVoiceCommand(transcript) {
     };
   }
 
-  // Reverse pattern: "interstellar chalao", "titanic play karo"
-  const reversePlayMatch = text.match(/^(.+)\s+(?:chalao|lagao|play karo|start karo)$/i);
+  // Reverse pattern: "interstellar chalao", "solo leveling play karo"
+  const reversePlayMatch = text.match(/^(.+)\s+(?:chalao|lagao|play karo|start karo|play)$/i);
   if (reversePlayMatch) {
     return {
       action: 'SEARCH_AND_PLAY',
@@ -29,54 +57,45 @@ export function parseVoiceCommand(transcript) {
     };
   }
 
-  // 2. Pause
+  // 4. Playback Controls (Pause, Resume, Seek, Volume)
   if (/^(pause|stop|ruk jao|roko|rok do|pause karo|thehero)$/i.test(text)) {
     return { action: 'PAUSE' };
   }
 
-  // 3. Resume / Play current
   if (/^(resume|play|chalu karo|start|continue|phir se chalao)$/i.test(text)) {
     return { action: 'RESUME' };
   }
 
-  // 4. Skip / Forward
-  // "forward 10 seconds", "skip 30s", "10 second aage", "aage badhao"
   const forwardMatch = text.match(/(?:forward|skip|aage|ahead)\s*(\d+)?\s*(?:seconds?|secs?|s)?/i);
   if (forwardMatch) {
     const seconds = forwardMatch[1] ? parseInt(forwardMatch[1], 10) : 10;
-    return { action: 'SEEK_RELATIVE', seconds: seconds };
+    return { action: 'SEEK_RELATIVE', seconds };
   }
 
-  // 5. Rewind / Backward
   const rewindMatch = text.match(/(?:rewind|back|backward|peeche)\s*(\d+)?\s*(?:seconds?|secs?|s)?/i);
   if (rewindMatch) {
     const seconds = rewindMatch[1] ? parseInt(rewindMatch[1], 10) : -10;
     return { action: 'SEEK_RELATIVE', seconds: -Math.abs(seconds) };
   }
 
-  // 6. Volume Control
-  // "volume 80", "volume 50 percent", "aawaz 100"
   const volMatch = text.match(/(?:volume|aawaz|sound)\s*(\d+)\s*(?:percent|%)?/i);
   if (volMatch) {
     const vol = Math.min(100, Math.max(0, parseInt(volMatch[1], 10)));
     return { action: 'SET_VOLUME', volume: vol / 100 };
   }
-  if (/^(mute|chup|silent)$/i.test(text)) {
-    return { action: 'MUTE' };
-  }
-  if (/^(unmute|sound on|aawaz kholo)$/i.test(text)) {
-    return { action: 'UNMUTE' };
-  }
 
-  // 7. Search command
+  if (/^(mute|chup|silent)$/i.test(text)) return { action: 'MUTE' };
+  if (/^(unmute|sound on|aawaz kholo)$/i.test(text)) return { action: 'UNMUTE' };
+
+  // 5. Search Command
   const searchMatch = text.match(/(?:search|dhoondho|khojo|find)\s+(.+)$/i);
   if (searchMatch) {
     return { action: 'SEARCH', query: searchMatch[1].trim() };
   }
 
-  // Fallback: If user just said a title or sentence
+  // 6. General AI Conversational Query (Fallthrough to AI Voice Chat & TTS Response)
   if (text.length > 2) {
-    return { action: 'SEARCH_AND_PLAY', query: text };
+    return { action: 'AI_QUERY', query: text };
   }
 
   return null;

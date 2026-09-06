@@ -121,12 +121,17 @@ async function searchMovies(req, res) {
       type: 'embed',
       url: `https://autoembed.co/movie/tmdb/${m.id}`,
       servers: [
-        { name: '⚡ Server 1 (AutoEmbed CDN)', url: `https://autoembed.co/movie/tmdb/${m.id}`, speed: 'Fast' },
-        { name: '🔥 Server 2 (VidSrc.to Pro)', url: `https://vidsrc.to/embed/movie/${m.id}`, speed: 'Ultra HD' },
-        { name: '🎬 Server 3 (2Embed Multi)', url: `https://2embed.cc/embed/movie/${m.id}`, speed: 'High' },
-        { name: '🌟 Server 4 (VidSrc.me Mirror)', url: `https://vidsrc.me/embed/movie?tmdb=${m.id}`, speed: 'Standard' },
-        { name: '🛡️ Server 5 (SmashyStream)', url: `https://embed.smashystream.com/playere.php?tmdb=${m.id}`, speed: 'Backup' },
-        { name: '🚀 Server 6 (MoviesAPI)', url: `https://moviesapi.club/movie/${m.id}`, speed: 'Fast' }
+        { name: '⚡ Server 1 (AutoEmbed CDN)', url: `https://autoembed.co/movie/tmdb/${m.id}`, speed: 'Fast 1080p' },
+        { name: '🔥 Server 2 (VidSrc.to Pro)', url: `https://vidsrc.to/embed/movie/${m.id}`, speed: 'Ultra 4K' },
+        { name: '🌟 Server 3 (VidSrc.cc Multi)', url: `https://vidsrc.cc/v2/embed/movie/${m.id}`, speed: 'Full HD' },
+        { name: '🚀 Server 4 (Embed.su HD)', url: `https://embed.su/embed/movie/${m.id}`, speed: 'Ultra Fast' },
+        { name: '💎 Server 5 (VidLink Pro)', url: `https://vidlink.pro/movie/${m.id}`, speed: '4K Stream' },
+        { name: '🎬 Server 6 (2Embed Multi)', url: `https://2embed.cc/embed/movie/${m.id}`, speed: 'High Speed' },
+        { name: '🔮 Server 7 (SuperEmbed Direct)', url: `https://multiembed.mov/directstream.php?video_id=${m.id}&tmdb=1`, speed: 'Ultra HD' },
+        { name: '🌸 Server 8 (WatchAnimeWorld HD)', url: `https://watchanimeworld.one/?s=${encodeURIComponent(m.title)}`, speed: 'Anime & Movies 4K' },
+        { name: '🛡️ Server 9 (SmashyStream)', url: `https://embed.smashystream.com/playere.php?tmdb=${m.id}`, speed: 'Backup Server' },
+        { name: '🌐 Server 10 (VidSrc.me Mirror)', url: `https://vidsrc.me/embed/movie?tmdb=${m.id}`, speed: 'Mirror HD' },
+        { name: '🍿 Server 11 (MoviesAPI Club)', url: `https://moviesapi.club/movie/${m.id}`, speed: 'Fast' }
       ]
     }));
 
@@ -320,12 +325,16 @@ function getSeriesServers(req, res) {
   if (!id) return res.status(400).json({ error: 'Missing id' });
 
   const servers = [
-    { name: '⚡ Server 1 (AutoEmbed TV)', url: `https://autoembed.co/tv/tmdb/${id}/${s}/${e}`, speed: 'Fast' },
-    { name: '🔥 Server 2 (VidSrc.to Pro)', url: `https://vidsrc.to/embed/tv/${id}/${s}/${e}`, speed: 'Ultra HD' },
-    { name: '🎬 Server 3 (2Embed TV)', url: `https://2embed.cc/embed/tv/${id}&s=${s}&e=${e}`, speed: 'High' },
-    { name: '🌟 Server 4 (VidSrc.me Mirror)', url: `https://vidsrc.me/embed/tv?imdb=${id}&season=${s}&episode=${e}`, speed: 'Standard' },
-    { name: '🛡️ Server 5 (SmashyStream TV)', url: `https://embed.smashystream.com/playere.php?tmdb=${id}&season=${s}&episode=${e}`, speed: 'Backup' },
-    { name: '🚀 Server 6 (VidSrc PM)', url: `https://vidsrc.pm/embed/tv?imdb=${id}&season=${s}&episode=${e}`, speed: 'Fast' }
+    { name: '⚡ Server 1 (AutoEmbed TV)', url: `https://autoembed.co/tv/tmdb/${id}/${s}/${e}`, speed: 'Fast 1080p' },
+    { name: '🔥 Server 2 (VidSrc.to Pro)', url: `https://vidsrc.to/embed/tv/${id}/${s}/${e}`, speed: 'Ultra 4K' },
+    { name: '🌟 Server 3 (VidSrc.cc TV)', url: `https://vidsrc.cc/v2/embed/tv/${id}/${s}/${e}`, speed: 'Full HD' },
+    { name: '🚀 Server 4 (Embed.su TV)', url: `https://embed.su/embed/tv/${id}/${s}/${e}`, speed: 'Ultra Fast' },
+    { name: '💎 Server 5 (VidLink TV)', url: `https://vidlink.pro/tv/${id}/${s}/${e}`, speed: '4K Stream' },
+    { name: '🎬 Server 6 (2Embed TV)', url: `https://2embed.cc/embed/tv/${id}&s=${s}&e=${e}`, speed: 'High Speed' },
+    { name: '🔮 Server 7 (SuperEmbed TV)', url: `https://multiembed.mov/directstream.php?video_id=${id}&tmdb=1&s=${s}&e=${e}`, speed: 'Ultra HD' },
+    { name: '🛡️ Server 8 (SmashyStream TV)', url: `https://embed.smashystream.com/playere.php?tmdb=${id}&season=${s}&episode=${e}`, speed: 'Backup' },
+    { name: '🌐 Server 9 (VidSrc.me TV)', url: `https://vidsrc.me/embed/tv?imdb=${id}&season=${s}&episode=${e}`, speed: 'Mirror HD' },
+    { name: '🍿 Server 10 (MoviesAPI Club)', url: `https://moviesapi.club/movie/${id}`, speed: 'Fast' }
   ];
 
   res.json({
@@ -337,9 +346,14 @@ function getSeriesServers(req, res) {
   });
 }
 
+const DBService = require('../services/dbService');
+
 async function searchAll(req, res) {
   const query = req.query.q;
   if (!query) return res.json({ movies: [], youtube: [] });
+
+  // Log search activity for AI personalization
+  DBService.logActivity(req.query.userEmail, req.query.userName, req.query.roomId, 'search', query);
 
   try {
     const fetchMoviePromise = fetch(`https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(query)}&api_key=15d2ea6d0dc1d476efbca3eba2b9bbfb`, {
@@ -367,12 +381,16 @@ async function searchAll(req, res) {
         type: 'embed',
         url: `https://autoembed.co/movie/tmdb/${m.id}`,
         servers: [
-          { name: '⚡ Server 1 (AutoEmbed CDN)', url: `https://autoembed.co/movie/tmdb/${m.id}`, speed: 'Fast' },
-          { name: '🔥 Server 2 (VidSrc.to Pro)', url: `https://vidsrc.to/embed/movie/${m.id}`, speed: 'Ultra HD' },
-          { name: '🎬 Server 3 (2Embed Multi)', url: `https://2embed.cc/embed/movie/${m.id}`, speed: 'High' },
-          { name: '🌟 Server 4 (VidSrc.me Mirror)', url: `https://vidsrc.me/embed/movie?tmdb=${m.id}`, speed: 'Standard' },
-          { name: '🛡️ Server 5 (SmashyStream)', url: `https://embed.smashystream.com/playere.php?tmdb=${m.id}`, speed: 'Backup' },
-          { name: '🚀 Server 6 (MoviesAPI)', url: `https://moviesapi.club/movie/${m.id}`, speed: 'Fast' }
+          { name: '⚡ Server 1 (AutoEmbed CDN)', url: `https://autoembed.co/movie/tmdb/${m.id}`, speed: 'Fast 1080p' },
+          { name: '🔥 Server 2 (VidSrc.to Pro)', url: `https://vidsrc.to/embed/movie/${m.id}`, speed: 'Ultra 4K' },
+          { name: '🌟 Server 3 (VidSrc.cc Multi)', url: `https://vidsrc.cc/v2/embed/movie/${m.id}`, speed: 'Full HD' },
+          { name: '🚀 Server 4 (Embed.su HD)', url: `https://embed.su/embed/movie/${m.id}`, speed: 'Ultra Fast' },
+          { name: '💎 Server 5 (VidLink Pro)', url: `https://vidlink.pro/movie/${m.id}`, speed: '4K Stream' },
+          { name: '🎬 Server 6 (2Embed Multi)', url: `https://2embed.cc/embed/movie/${m.id}`, speed: 'High Speed' },
+          { name: '🔮 Server 7 (SuperEmbed Direct)', url: `https://multiembed.mov/directstream.php?video_id=${m.id}&tmdb=1`, speed: 'Ultra HD' },
+          { name: '🛡️ Server 8 (SmashyStream)', url: `https://embed.smashystream.com/playere.php?tmdb=${m.id}`, speed: 'Backup Server' },
+          { name: '🌐 Server 9 (VidSrc.me Mirror)', url: `https://vidsrc.me/embed/movie?tmdb=${m.id}`, speed: 'Mirror HD' },
+          { name: '🍿 Server 10 (MoviesAPI Club)', url: `https://moviesapi.club/movie/${m.id}`, speed: 'Fast' }
         ]
       }));
     }
@@ -419,15 +437,213 @@ async function searchNeural(req, res) {
     const matches = await GroqService.resolveNeuralSearch(query.trim());
 
     if (matches && matches.length > 0) {
+      // Search TMDB for all resolved candidates
+      const moviePromises = matches.map(async (match) => {
+        try {
+          const tmdbRes = await fetch(
+            `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(match.title)}&api_key=15d2ea6d0dc1d476efbca3eba2b9bbfb`,
+            { signal: AbortSignal.timeout(3500) }
+          );
+          if (tmdbRes.ok) {
+            const data = await tmdbRes.json();
+            const m = data.results?.[0];
+            if (m) {
+              return {
+                id: m.id,
+                tmdbId: m.id,
+                title: m.title,
+                year: m.release_date ? m.release_date.split('-')[0] : (match.year ? String(match.year) : ''),
+                poster: m.poster_path ? `https://image.tmdb.org/t/p/w500${m.poster_path}` : null,
+                backdrop: m.backdrop_path ? `https://image.tmdb.org/t/p/w780${m.backdrop_path}` : null,
+                overview: m.overview || match.whyMatch,
+                whyWatch: match.whyMatch,
+                rating: m.vote_average ? m.vote_average.toFixed(1) : '8.0',
+                type: 'embed',
+                url: `https://autoembed.co/movie/tmdb/${m.id}`,
+                servers: [
+                  { name: '⚡ Server 1 (AutoEmbed CDN)', url: `https://autoembed.co/movie/tmdb/${m.id}`, speed: 'Fast 1080p' },
+                  { name: '🔥 Server 2 (VidSrc.to Pro)', url: `https://vidsrc.to/embed/movie/${m.id}`, speed: 'Ultra 4K' },
+                  { name: '🌟 Server 3 (VidSrc.cc Multi)', url: `https://vidsrc.cc/v2/embed/movie/${m.id}`, speed: 'Full HD' },
+                  { name: '🚀 Server 4 (Embed.su HD)', url: `https://embed.su/embed/movie/${m.id}`, speed: 'Ultra Fast' }
+                ]
+              };
+            }
+          }
+        } catch (e) {}
+        return null;
+      });
+
+      const resolvedMovies = (await Promise.all(moviePromises)).filter(Boolean);
+      if (resolvedMovies.length > 0) {
+        return res.json({ movies: resolvedMovies, youtube: [], matches });
+      }
+
       const topTitle = matches[0].title;
       req.query.q = topTitle;
       return searchAll(req, res);
     }
 
-    return res.json({ matches: [], movies: [], youtube: [] });
+    return searchAll(req, res);
   } catch (err) {
     console.error('[Neural Search Controller Error]', err);
     res.status(500).json({ error: 'Neural search failed', matches: [], movies: [], youtube: [] });
+  }
+}
+
+// 9. WatchAnimeWorld Dedicated Search & Scrape Endpoint
+async function searchWatchAnimeWorld(req, res) {
+  const query = req.query.q || '';
+  try {
+    const searchUrl = query ? `https://watchanimeworld.one/?s=${encodeURIComponent(query)}` : `https://watchanimeworld.one/`;
+    const response = await fetch(searchUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      },
+      signal: AbortSignal.timeout(5500)
+    });
+    const html = await response.text();
+
+    const articleRegex = /<a[^>]+href="([^"]+)"[^>]*>[\s\S]*?<img[^>]+src="([^"]+)"[^>]*alt="([^"]*)"/gi;
+    let match;
+    const items = [];
+    const seen = new Set();
+
+    while ((match = articleRegex.exec(html)) !== null) {
+      const href = match[1];
+      const img = match[2];
+      const rawTitle = match[3].replace(/<[^>]+>/g, '').trim();
+
+      if (href && rawTitle && !seen.has(href) && href.includes('watchanimeworld.one')) {
+        seen.add(href);
+        items.push({
+          id: href,
+          url: href,
+          poster: img,
+          title: rawTitle,
+          type: 'embed',
+          source: 'watchanimeworld'
+        });
+      }
+    }
+    res.json({ anime: items });
+  } catch (err) {
+    console.error('[WatchAnimeWorld Search Error]', err);
+    res.json({ anime: [] });
+  }
+}
+
+// 10. WatchAnimeWorld Deep Page & Stream Resolver
+async function resolveWatchAnimeWorld(req, res) {
+  const pageUrl = req.query.url || '';
+  const searchTitle = req.query.title || '';
+
+  try {
+    let extractedIframes = [];
+    if (pageUrl && pageUrl.startsWith('http') && !pageUrl.includes('/category/')) {
+      try {
+        const response = await fetch(pageUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+          },
+          signal: AbortSignal.timeout(5000)
+        });
+        const html = await response.text();
+        const iframeMatches = [...html.matchAll(/<iframe[^>]+(?:src|data-src)="([^"]+)"/gi)].map(m => m[1]);
+
+        extractedIframes = iframeMatches.filter(src => {
+          if (!src) return false;
+          const lower = src.toLowerCase();
+          return !lower.includes('google') && !lower.includes('facebook') && !lower.includes('telegram') &&
+                 !lower.includes('disqus') && !lower.includes('doubleclick') && !lower.includes('challenge-platform') &&
+                 !lower.includes('wp-admin') && !lower.includes('captcha');
+        });
+      } catch (err) {
+        console.warn('[WatchAnimeWorld Page Scraping Warning]', err.message);
+      }
+    }
+
+    // Clean title for TMDB matching
+    let cleanTitle = (searchTitle || '').replace(/<[^>]+>/g, '').replace(/&#038;/g, '&');
+    cleanTitle = cleanTitle.replace(/\s*[\(\[\{]?(?:Hindi|Tamil|Telugu|Japanese|Dubbed|Subbed|Download|Watch|Online|480p|720p|1080p|HD|Full Movie|Season \d+|Episodes?)[^\)\]\}]*[\)\]\}]?/gi, '').trim();
+    cleanTitle = cleanTitle.replace(/\s*-\s*Watch Now.*/gi, '').trim();
+
+    if (!cleanTitle && pageUrl) {
+      const parts = pageUrl.split('/').filter(Boolean);
+      cleanTitle = parts[parts.length - 1].replace(/-/g, ' ');
+    }
+
+    let tmdbMovie = null;
+    let tmdbTv = null;
+    if (cleanTitle) {
+      try {
+        const [resM, resT] = await Promise.all([
+          fetch(`https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(cleanTitle)}&api_key=15d2ea6d0dc1d476efbca3eba2b9bbfb`, { signal: AbortSignal.timeout(3000) }).then(r => r.json()).catch(() => null),
+          fetch(`https://api.themoviedb.org/3/search/tv?query=${encodeURIComponent(cleanTitle)}&api_key=15d2ea6d0dc1d476efbca3eba2b9bbfb`, { signal: AbortSignal.timeout(3000) }).then(r => r.json()).catch(() => null)
+        ]);
+        tmdbMovie = resM?.results?.[0];
+        tmdbTv = resT?.results?.[0];
+      } catch (err) {
+        console.warn('[TMDB Search Warning]', err.message);
+      }
+    }
+
+    const servers = [];
+
+    // 1. Add direct iframe embeds extracted from WatchAnimeWorld post page
+    extractedIframes.forEach((iframeUrl, idx) => {
+      servers.push({
+        name: `🌸 Server ${servers.length + 1} (WatchAnimeWorld Direct ${idx + 1})`,
+        url: iframeUrl,
+        sourceType: 'embed',
+        speed: 'Anime Player'
+      });
+    });
+
+    // 2. Add high-speed 4K/1080p Movie Embed Servers if TMDB Movie found
+    if (tmdbMovie) {
+      const mId = tmdbMovie.id;
+      servers.push({ name: `⚡ Server ${servers.length + 1} (AutoEmbed 4K Anime)`, url: `https://autoembed.co/movie/tmdb/${mId}`, sourceType: 'embed', speed: 'Fast 1080p' });
+      servers.push({ name: `🔥 Server ${servers.length + 1} (VidSrc.to Pro Anime)`, url: `https://vidsrc.to/embed/movie/${mId}`, sourceType: 'embed', speed: 'Ultra 4K' });
+      servers.push({ name: `🌟 Server ${servers.length + 1} (VidSrc.cc Multi HD)`, url: `https://vidsrc.cc/v2/embed/movie/${mId}`, sourceType: 'embed', speed: 'Full HD' });
+      servers.push({ name: `🚀 Server ${servers.length + 1} (Embed.su HD)`, url: `https://embed.su/embed/movie/${mId}`, sourceType: 'embed', speed: 'Ultra Fast' });
+      servers.push({ name: `💎 Server ${servers.length + 1} (VidLink 4K)`, url: `https://vidlink.pro/movie/${mId}`, sourceType: 'embed', speed: '4K Stream' });
+      servers.push({ name: `🎬 Server ${servers.length + 1} (2Embed Multi)`, url: `https://2embed.cc/embed/movie/${mId}`, sourceType: 'embed', speed: 'High Speed' });
+      servers.push({ name: `🔮 Server ${servers.length + 1} (SuperEmbed Direct)`, url: `https://multiembed.mov/directstream.php?video_id=${mId}&tmdb=1`, sourceType: 'embed', speed: 'Ultra HD' });
+      servers.push({ name: `🍿 Server ${servers.length + 1} (MoviesAPI Club)`, url: `https://moviesapi.club/movie/${mId}`, sourceType: 'embed', speed: 'Fast' });
+    }
+
+    // 3. Add TV Series Embed Servers if TMDB TV found
+    if (tmdbTv) {
+      const tId = tmdbTv.id;
+      servers.push({ name: `📺 Server ${servers.length + 1} (AutoEmbed TV Series)`, url: `https://autoembed.co/tv/tmdb/${tId}/1/1`, sourceType: 'embed', speed: 'TV Fast 1080p' });
+      servers.push({ name: `🔥 Server ${servers.length + 1} (VidSrc.to TV Series)`, url: `https://vidsrc.to/embed/tv/${tId}/1/1`, sourceType: 'embed', speed: 'TV Ultra 4K' });
+      servers.push({ name: `🌟 Server ${servers.length + 1} (VidSrc.cc TV Series)`, url: `https://vidsrc.cc/v2/embed/tv/${tId}/1/1`, sourceType: 'embed', speed: 'TV Full HD' });
+      servers.push({ name: `🚀 Server ${servers.length + 1} (Embed.su TV Series)`, url: `https://embed.su/embed/tv/${tId}/1/1`, sourceType: 'embed', speed: 'TV Ultra' });
+      servers.push({ name: `💎 Server ${servers.length + 1} (VidLink TV Series)`, url: `https://vidlink.pro/tv/${tId}/1/1`, sourceType: 'embed', speed: 'TV 4K' });
+    }
+
+    // Fallback if no servers resolved
+    if (servers.length === 0) {
+      servers.push({
+        name: '🌸 Server 1 (AutoEmbed Fallback)',
+        url: `https://autoembed.co/movie/tmdb/${encodeURIComponent(cleanTitle || 'Doraemon')}`,
+        sourceType: 'embed',
+        speed: 'Standard'
+      });
+    }
+
+    const activeUrl = servers[0].url;
+
+    res.json({
+      success: true,
+      title: cleanTitle || searchTitle || 'Anime Movie',
+      url: activeUrl,
+      activeUrl,
+      servers
+    });
+  } catch (err) {
+    console.error('[WatchAnimeWorld Resolve Error]', err);
+    res.status(500).json({ error: 'Failed to resolve anime player', servers: [] });
   }
 }
 
@@ -439,5 +655,8 @@ module.exports = {
   resolveHdhub4u,
   getSeriesServers,
   searchAll,
-  searchNeural
+  searchNeural,
+  searchWatchAnimeWorld,
+  resolveWatchAnimeWorld
 };
+

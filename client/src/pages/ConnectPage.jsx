@@ -37,6 +37,7 @@ import {
   Clock,
   Phone,
   Moon,
+  Sun,
   Send,
   HelpCircle,
   TrendingUp,
@@ -47,6 +48,9 @@ import AuthModal from '../components/AuthModal';
 import ProfileModal from '../components/ProfileModal';
 import HeaderProfileMenu from '../components/HeaderProfileMenu';
 import RoomModal from '../components/RoomModal';
+import VoiceAssistant from '../components/VoiceAssistant';
+import { getT } from '../utils/themeTokens';
+
 
 function generateCode() {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -57,7 +61,9 @@ function generateCode() {
   return `viam-${code}`;
 }
 
-export default function ConnectPage({ onConnect, onOpenProfile }) {
+export default function ConnectPage({ onConnect, onOpenProfile, onToggleTheme, onGlobalVoiceAction, theme = 'dark' }) {
+  const T = getT(theme);
+
   const [userAccount, setUserAccount] = useState(() => {
     try {
       const saved = localStorage.getItem('cypr_user_account');
@@ -194,7 +200,8 @@ export default function ConnectPage({ onConnect, onOpenProfile }) {
   ];
 
   return (
-    <div className="landing-container" style={{ background: '#0b0806', color: '#fff', minHeight: '100vh', overflowX: 'hidden', fontFamily: 'Plus Jakarta Sans, sans-serif', position: 'relative' }}>
+    <div className="landing-container" style={{ background: T.pageBg, color: T.textPrimary, minHeight: '100vh', overflowX: 'hidden', fontFamily: 'Plus Jakarta Sans, sans-serif', position: 'relative', transition: 'background 0.4s ease, color 0.35s ease' }}>
+
 
       {/* Full-Screen Floating Emoji Fireworks Particles Layer */}
       {burstParticles.map((p) => (
@@ -221,8 +228,9 @@ export default function ConnectPage({ onConnect, onOpenProfile }) {
         height: '70px', width: '100%', padding: '0 32px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         position: 'sticky', top: 0, zIndex: 1000,
-        background: 'rgba(9, 9, 11, 0.92)', backdropFilter: 'blur(16px)',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.08)'
+        background: T.headerBg, backdropFilter: 'blur(16px)',
+        borderBottom: `1px solid ${T.headerBorder}`,
+        transition: 'background 0.4s ease, border-color 0.35s ease'
       }}>
         {/* Left: Brand Logo + Security Tag */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer' }} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
@@ -259,6 +267,7 @@ export default function ConnectPage({ onConnect, onOpenProfile }) {
 
         {/* Right: Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <VoiceAssistant onGlobalVoiceAction={onGlobalVoiceAction} theme={theme} showLabel={true} />
           {userAccount ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <button
@@ -276,12 +285,13 @@ export default function ConnectPage({ onConnect, onOpenProfile }) {
               <button
                 onClick={openJoinRoom}
                 style={{
-                  background: '#141417', border: '1px solid #27272a',
-                  color: '#a1a1aa', fontSize: '12px', fontWeight: '600', padding: '7px 12px',
+                  background: T.isLight ? '#f0ebe0' : '#141417',
+                  border: `1px solid ${T.border}`,
+                  color: T.textMuted1, fontSize: '12px', fontWeight: '600', padding: '7px 12px',
                   borderRadius: '8px', cursor: 'pointer'
                 }}
-                onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#ff5500'; }}
-                onMouseLeave={e => { e.currentTarget.style.color = '#a1a1aa'; e.currentTarget.style.borderColor = '#27272a'; }}
+                onMouseEnter={e => { e.currentTarget.style.color = T.textPrimary; e.currentTarget.style.borderColor = '#ff5500'; }}
+                onMouseLeave={e => { e.currentTarget.style.color = T.textMuted1; e.currentTarget.style.borderColor = T.border; }}
               >
                 Join with Code
               </button>
@@ -290,6 +300,7 @@ export default function ConnectPage({ onConnect, onOpenProfile }) {
                 onOpenProfile={onOpenProfile}
                 onOpenHistory={onOpenProfile}
                 onLogout={handleLogout}
+                theme={theme}
               />
             </div>
           ) : (
@@ -881,6 +892,7 @@ export default function ConnectPage({ onConnect, onOpenProfile }) {
         onAuthSuccess={handleAuthSuccess}
         onSuccess={handleAuthSuccess}
         initialTab={authTab}
+        theme={theme}
       />
 
       {/* Upgraded Room Setup & Capacity Modal */}
@@ -888,6 +900,7 @@ export default function ConnectPage({ onConnect, onOpenProfile }) {
         isOpen={roomModalOpen}
         onClose={() => setRoomModalOpen(false)}
         userAccount={userAccount}
+        theme={theme}
         defaultRoomId={new URLSearchParams(window.location.search).get('room') || new URLSearchParams(window.location.search).get('join') || ''}
         initialMode={roomModalMode}
         onJoinRoom={(roomData) => {
@@ -901,6 +914,7 @@ export default function ConnectPage({ onConnect, onOpenProfile }) {
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
         userAccount={userAccount}
+        theme={theme}
         onLogout={() => {
           localStorage.removeItem('cypr_user_account');
           setUserAccount(null);

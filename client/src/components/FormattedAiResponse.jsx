@@ -1,8 +1,13 @@
 import React from 'react';
 import { Play, Film, ExternalLink, Sparkles } from 'lucide-react';
+import { getT } from '../utils/themeTokens';
 
-export default function FormattedAiResponse({ text, onPlayMovie }) {
+export default function FormattedAiResponse({ text, onPlayMovie, theme }) {
   if (!text) return null;
+
+  const currentTheme = theme || (typeof document !== 'undefined' && document.body.classList.contains('light-theme') ? 'light' : 'dark');
+  const T = getT(currentTheme);
+  const isLight = T.isLight;
 
   // Split by double newline or single newline for paragraphs/lists
   const lines = text.split('\n');
@@ -28,7 +33,7 @@ export default function FormattedAiResponse({ text, onPlayMovie }) {
       if (matchedText.startsWith('**') && matchedText.endsWith('**')) {
         const inner = matchedText.slice(2, -2);
         parts.push(
-          <strong key={keyIdx++} style={{ color: '#ffffff', fontWeight: 800 }}>
+          <strong key={keyIdx++} style={{ color: isLight ? '#111827' : '#ffffff', fontWeight: 800 }}>
             {inner}
           </strong>
         );
@@ -38,9 +43,9 @@ export default function FormattedAiResponse({ text, onPlayMovie }) {
           <code
             key={keyIdx++}
             style={{
-              background: 'rgba(168, 85, 247, 0.15)',
-              border: '1px solid rgba(168, 85, 247, 0.3)',
-              color: '#c084fc',
+              background: isLight ? 'rgba(168, 85, 247, 0.1)' : 'rgba(168, 85, 247, 0.15)',
+              border: isLight ? '1px solid rgba(168, 85, 247, 0.3)' : '1px solid rgba(168, 85, 247, 0.3)',
+              color: isLight ? '#7e22ce' : '#c084fc',
               padding: '2px 6px',
               borderRadius: 6,
               fontFamily: 'monospace',
@@ -61,9 +66,9 @@ export default function FormattedAiResponse({ text, onPlayMovie }) {
               display: 'inline-flex',
               alignItems: 'center',
               gap: 5,
-              background: 'linear-gradient(135deg, rgba(255, 85, 0, 0.2) 0%, rgba(255, 85, 0, 0.1) 100%)',
+              background: isLight ? 'rgba(255, 85, 0, 0.1)' : 'linear-gradient(135deg, rgba(255, 85, 0, 0.2) 0%, rgba(255, 85, 0, 0.1) 100%)',
               border: '1px solid rgba(255, 85, 0, 0.4)',
-              color: '#ff7733',
+              color: isLight ? '#c2410c' : '#ff7733',
               padding: '2px 8px',
               borderRadius: 8,
               cursor: 'pointer',
@@ -73,10 +78,10 @@ export default function FormattedAiResponse({ text, onPlayMovie }) {
               transition: 'all 0.15s ease'
             }}
             title={`Play "${movieName}" in Cinema Lounge`}
-            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 85, 0, 0.35)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 85, 0, 0.2)'}
+            onMouseEnter={e => e.currentTarget.style.background = isLight ? 'rgba(255, 85, 0, 0.18)' : 'rgba(255, 85, 0, 0.35)'}
+            onMouseLeave={e => e.currentTarget.style.background = isLight ? 'rgba(255, 85, 0, 0.1)' : 'rgba(255, 85, 0, 0.2)'}
           >
-            <Play size={11} fill="#ff7733" />
+            <Play size={11} fill={isLight ? '#c2410c' : '#ff7733'} />
             <span>/play {movieName}</span>
           </span>
         );
@@ -92,7 +97,7 @@ export default function FormattedAiResponse({ text, onPlayMovie }) {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: '14.5px', lineHeight: 1.65, color: '#e2e8f0' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: '14.5px', lineHeight: 1.65, color: isLight ? '#18181b' : '#e2e8f0' }}>
       {lines.map((line, idx) => {
         const trimmed = line.trim();
         if (!trimmed) {
@@ -108,7 +113,7 @@ export default function FormattedAiResponse({ text, onPlayMovie }) {
               style={{
                 fontSize: '17px',
                 fontWeight: 900,
-                color: '#fff',
+                color: isLight ? '#111827' : '#ffffff',
                 margin: '12px 0 4px',
                 fontFamily: 'Outfit, sans-serif',
                 display: 'flex',
@@ -117,7 +122,7 @@ export default function FormattedAiResponse({ text, onPlayMovie }) {
                 letterSpacing: '-0.2px'
               }}
             >
-              <Sparkles size={15} color="#c084fc" />
+              <Sparkles size={15} color={isLight ? '#7e22ce' : '#c084fc'} />
               <span>{renderFormattedInline(headingText)}</span>
             </h3>
           );
@@ -132,7 +137,7 @@ export default function FormattedAiResponse({ text, onPlayMovie }) {
               style={{
                 fontSize: '16.5px',
                 fontWeight: 800,
-                color: '#ffffff',
+                color: isLight ? '#111827' : '#ffffff',
                 margin: '8px 0 2px',
                 display: 'flex',
                 alignItems: 'center',
@@ -154,12 +159,12 @@ export default function FormattedAiResponse({ text, onPlayMovie }) {
                 width: 6,
                 height: 6,
                 borderRadius: '50%',
-                background: '#a855f7',
-                boxShadow: '0 0 8px #a855f7',
+                background: isLight ? '#7e22ce' : '#a855f7',
+                boxShadow: isLight ? '0 0 6px rgba(126,34,206,0.3)' : '0 0 8px #a855f7',
                 marginTop: 8,
                 flexShrink: 0
               }} />
-              <div style={{ flex: 1 }}>{renderFormattedInline(content)}</div>
+              <div style={{ flex: 1, color: isLight ? '#18181b' : '#e2e8f0' }}>{renderFormattedInline(content)}</div>
             </div>
           );
         }
@@ -178,9 +183,9 @@ export default function FormattedAiResponse({ text, onPlayMovie }) {
                 minWidth: 20,
                 height: 20,
                 borderRadius: '50%',
-                background: 'rgba(168, 85, 247, 0.15)',
-                border: '1px solid rgba(168, 85, 247, 0.3)',
-                color: '#c084fc',
+                background: isLight ? 'rgba(168, 85, 247, 0.12)' : 'rgba(168, 85, 247, 0.15)',
+                border: isLight ? '1px solid rgba(168, 85, 247, 0.3)' : '1px solid rgba(168, 85, 247, 0.3)',
+                color: isLight ? '#7e22ce' : '#c084fc',
                 fontSize: '11px',
                 fontWeight: 800,
                 marginTop: 2,
@@ -188,14 +193,14 @@ export default function FormattedAiResponse({ text, onPlayMovie }) {
               }}>
                 {num}
               </span>
-              <div style={{ flex: 1 }}>{renderFormattedInline(content)}</div>
+              <div style={{ flex: 1, color: isLight ? '#18181b' : '#e2e8f0' }}>{renderFormattedInline(content)}</div>
             </div>
           );
         }
 
         // Standard Paragraph
         return (
-          <p key={idx} style={{ margin: '3px 0' }}>
+          <p key={idx} style={{ margin: '3px 0', color: isLight ? '#18181b' : '#e2e8f0' }}>
             {renderFormattedInline(trimmed)}
           </p>
         );

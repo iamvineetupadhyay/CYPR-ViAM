@@ -6,6 +6,7 @@ import {
   Sparkles, Settings, Activity
 } from 'lucide-react';
 import { useWebRTC } from '../hooks/useWebRTC';
+import { getT } from '../utils/themeTokens';
 
 export default function CallPage({
   currentUser,
@@ -15,8 +16,10 @@ export default function CallPage({
   initialIsVideo = true,
   webrtc: externalWebrtc,
   onBackToChat,
-  onMinimizeCall
+  onMinimizeCall,
+  theme = 'dark'
 }) {
+  const T = getT(theme);
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const remoteAudioRef = useRef(null);
@@ -196,9 +199,9 @@ export default function CallPage({
       {/* ═══════ TOP HEADER ═══════ */}
       <header style={{
         height: '68px', padding: '0 24px',
-        background: 'rgba(18, 18, 20, 0.85)',
+        background: T.headerBg,
         backdropFilter: 'blur(16px)',
-        borderBottom: '1px solid #27272a',
+        borderBottom: `1px solid ${T.border2}`,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         zIndex: 20
       }}>
@@ -207,14 +210,14 @@ export default function CallPage({
           <button
             onClick={onBackToChat}
             style={{
-              background: '#18181b', border: '1px solid #27272a',
+              background: T.pillBg, border: `1px solid ${T.pillBorder}`,
               borderRadius: '12px', padding: '8px 14px',
-              color: '#a1a1aa', fontSize: '13px', fontWeight: '600',
+              color: T.textPrimary, fontSize: '13px', fontWeight: '600',
               display: 'flex', alignItems: 'center', gap: '8px',
               cursor: 'pointer', transition: 'all 0.15s'
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = '#a1a1aa')}
+            onMouseEnter={(e) => (e.currentTarget.style.background = T.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = T.pillBg)}
           >
             <ArrowLeft size={16} />
             <span>Chat Room</span>
@@ -239,9 +242,9 @@ export default function CallPage({
           </button>
 
           <div style={{
-            background: '#141417', border: '1px solid #27272a',
+            background: T.chipBg, border: `1px solid ${T.chipBorder}`,
             borderRadius: '20px', padding: '6px 14px',
-            fontSize: '12px', fontWeight: '600', color: '#e4e4e7',
+            fontSize: '12px', fontWeight: '600', color: T.textPrimary,
             display: 'flex', alignItems: 'center', gap: '6px'
           }}>
             <ShieldCheck size={15} color="#22c55e" />
@@ -251,20 +254,20 @@ export default function CallPage({
 
         {/* Center: Call Status & Live Timer Badge */}
         <div style={{
-          background: '#141417', border: '1px solid #27272a',
+          background: T.surface2, border: `1px solid ${T.border2}`,
           borderRadius: '24px', padding: '6px 20px',
           display: 'flex', alignItems: 'center', gap: '10px',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.5)'
+          boxShadow: T.isLight ? '0 4px 16px rgba(0,0,0,0.08)' : '0 4px 20px rgba(0,0,0,0.5)'
         }}>
           <span style={{
             width: 9, height: 9, borderRadius: '50%',
             background: isCallConnected ? '#22c55e' : '#f59e0b',
             boxShadow: isCallConnected ? '0 0 10px #22c55e' : '0 0 10px #f59e0b'
           }} />
-          <span style={{ fontSize: '14px', fontWeight: '700', color: '#ffffff' }}>
+          <span style={{ fontSize: '14px', fontWeight: '700', color: T.textPrimary }}>
             {isCallConnected ? formatTimer(callTime) : 'Connecting call...'}
           </span>
-          <span style={{ fontSize: '11px', color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          <span style={{ fontSize: '11px', color: T.textMuted2, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             ({isVideoCall ? 'Video' : 'Voice'})
           </span>
         </div>
@@ -272,9 +275,9 @@ export default function CallPage({
         {/* Right: Security & Settings Toggle */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{
-            background: '#141417', border: '1px solid #27272a',
+            background: T.chipBg, border: `1px solid ${T.chipBorder}`,
             borderRadius: '16px', padding: '6px 12px',
-            fontSize: '12px', fontWeight: '600', color: '#a1a1aa',
+            fontSize: '12px', fontWeight: '600', color: T.textMuted1,
             display: 'flex', alignItems: 'center', gap: '6px'
           }}>
             <Activity size={14} color="#ff5500" />
@@ -285,8 +288,8 @@ export default function CallPage({
             onClick={() => setShowSettings(!showSettings)}
             style={{
               width: 38, height: 38, borderRadius: '12px',
-              background: '#18181b', border: '1px solid #27272a',
-              color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: T.pillBg, border: `1px solid ${T.pillBorder}`,
+              color: T.textPrimary, display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: 'pointer'
             }}
           >

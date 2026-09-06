@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  Heart, Film, Copy, Check, Moon, Sun,
+  Heart, Film, Copy, Check, Moon, Sun, ArrowLeft,
   Phone, PhoneOff, Video, VideoOff,
   Mic, MicOff, X, Search, Users, Lock,
   ShieldCheck, Sparkles, Send, MessageSquare, Crown, User, Hash, Bot, Lightbulb, HelpCircle, Dices, Zap,
@@ -10,8 +10,11 @@ import ChatWindow from '../components/ChatWindow';
 import ChatInput from '../components/ChatInput';
 import ProfileModal from '../components/ProfileModal';
 import HeaderProfileMenu from '../components/HeaderProfileMenu';
+import VoiceAssistant from '../components/VoiceAssistant';
 import { useWebRTC } from '../hooks/useWebRTC';
 import { encryptPayload, decryptPayload } from '../utils/cryptoUtils';
+import { getT } from '../utils/themeTokens';
+
 
 /* ─────────────────────────────────────────
    QUICK AI PROMPTS
@@ -77,14 +80,19 @@ function IncomingCallBanner({ partnerName, onAccept, onDecline, isVideoCall }) {
 ───────────────────────────────────────── */
 export default function ChatPage({
   currentUser, roomId, socket, roomUsers = [],
-  mediaState, onMediaChange, onOpenHome, onOpenCinema, onOpenProfile, onOpenCall, onLeave
+  mediaState, onMediaChange, onOpenHome, onOpenCinema, onOpenAI, onOpenProfile, onOpenCall, onLeave,
+  onToggleTheme,
+  onGlobalVoiceAction,
+  theme = 'dark'
 }) {
+  const T = getT(theme);
+
   const [messages, setMessages] = useState([]);
   const [copied, setCopied] = useState(false);
-  const [theme, setTheme] = useState(localStorage.getItem('cypr_theme') || 'dark');
   const [floatingEmojis, setFloatingEmojis] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [showMobileChat, setShowMobileChat] = useState(false);
 
   // Active Chat State: 'group' (Main Lounge) OR 'direct' (1-on-1 with member / AI)
   const [activeChat, setActiveChat] = useState({
@@ -116,14 +124,10 @@ export default function ChatPage({
     }
   }, [isCallConnected, activeCall]);
 
-  // Apply theme
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('cypr_theme', theme);
-  }, [theme]);
+  // Theme is now driven by App.jsx prop — removed local theme state
 
-  // Other members in room (excluding current client)
-  const otherMembers = roomUsers.filter(u => u.socketId !== socket?.id && u.name !== currentUser?.name);
+  // Other members in room (excluding current client socket)
+  const otherMembers = roomUsers.filter(u => u.socketId && u.socketId !== socket?.id);
 
   // Clear unread badge when activeChat changes
   useEffect(() => {
@@ -156,7 +160,7 @@ export default function ChatPage({
       if (decrypted) {
         let targetChatKey = 'group';
         if (decrypted.recipientSocketId && decrypted.recipientSocketId !== 'group') {
-          if (decrypted.senderId === socket.id) {
+          if (decrypted.senderId === socket?.id) {
             targetChatKey = `dm_${decrypted.recipientSocketId}`;
           } else {
             targetChatKey = `dm_${decrypted.senderId}`;
@@ -165,7 +169,7 @@ export default function ChatPage({
 
         const enrichedMsg = {
           ...decrypted,
-          chatId: decrypted.chatId || targetChatKey
+          chatId: targetChatKey
         };
 
         setMessages(prev => {
@@ -177,8 +181,11 @@ export default function ChatPage({
           return [...prev, enrichedMsg];
         });
 
-        // Update Unread Count if message is not in current active chat
+        // Update Unread Count & Emit WhatsApp Read Receipt
         if (enrichedMsg.senderId !== socket.id) {
+          socket.emit('message-delivered', { messageId: enrichedMsg.id || enrichedMsg.timestamp, senderSocketId: enrichedMsg.senderId });
+          socket.emit('message-seen', { messageId: enrichedMsg.id || enrichedMsg.timestamp, senderSocketId: enrichedMsg.senderId });
+
           if (enrichedMsg.recipientSocketId && enrichedMsg.recipientSocketId !== 'group') {
             const senderSocketId = enrichedMsg.senderId;
             setActiveChat(current => {
@@ -188,6 +195,7 @@ export default function ChatPage({
               return current;
             });
           } else {
+            setGroupTyping(null);
             setActiveChat(current => {
               if (current.type !== 'group') {
                 setUnreadCounts(u => ({ ...u, group: (u.group || 0) + 1 }));
@@ -199,10 +207,42 @@ export default function ChatPage({
       }
     });
 
+    // WhatsApp Read Receipts Status Listener
+    socket.on('message-status-update', ({ messageId, status }) => {
+      setMessages(prev => prev.map(m => {
+        const isTarget = (m.id && messageId && m.id === messageId) || (m.timestamp && m.timestamp === messageId);
+        if (isTarget) {
+          return {
+            ...m,
+            delivered: true,
+            read: status === 'seen' ? true : m.read
+          };
+        }
+        return m;
+      }));
+    });
+
+    socket.on('message-deleted', ({ messageId }) => {
+      setMessages(prev => prev.map(m =>
+        (m.id === messageId || m.timestamp === messageId) ? { ...m, deleted: true } : m
+      ));
+    });
+
     socket.on('reaction-received', async (data) => {
       const decrypted = await decryptPayload(data, roomId);
       const emoji = decrypted?.emoji || data?.emoji;
       if (emoji) triggerFloatingEmoji(emoji);
+    });
+
+    socket.on('message-reacted', ({ messageId, reactions }) => {
+      setMessages(prev => prev.map(m => {
+        const mId = String(m.id || m.timestamp);
+        const targetId = String(messageId);
+        if (mId === targetId || String(m.id) === targetId || String(m.timestamp) === targetId) {
+          return { ...m, reactions: reactions || {} };
+        }
+        return m;
+      }));
     });
 
     // Typing Indicators
@@ -214,16 +254,15 @@ export default function ChatPage({
       }
     });
 
-    socket.on('partner-typing-stop', ({ senderSocketId }) => {
+    socket.on('partner-typing-stop', ({ senderName, senderSocketId }) => {
       if (senderSocketId) {
         setDirectTyping(prev => {
           const copy = { ...prev };
           delete copy[senderSocketId];
           return copy;
         });
-      } else {
-        setGroupTyping(null);
       }
+      setGroupTyping(prev => (prev === senderName || !senderName ? null : prev));
     });
 
     socket.on('call-invite', ({ from, fromName, isVideo }) => {
@@ -274,6 +313,9 @@ export default function ChatPage({
     return () => {
       socket.off('initial-chat-history');
       socket.off('chat-message-received');
+      socket.off('message-status-update');
+      socket.off('message-deleted');
+      socket.off('message-reacted');
       socket.off('reaction-received');
       socket.off('partner-typing');
       socket.off('partner-typing-stop');
@@ -379,8 +421,13 @@ export default function ChatPage({
     if (activeChat.type === 'group') {
       return m.chatId === 'group' || (!m.chatId && !m.recipientSocketId) || m.target === 'group';
     } else if (activeChat.type === 'direct') {
-      const targetDm = `dm_${activeChat.id}`;
-      return m.chatId === targetDm;
+      const partnerSocketId = activeChat.id;
+      return (
+        (m.senderId === partnerSocketId && (m.recipientSocketId === socket?.id || m.recipientSocketId === 'direct')) ||
+        (m.senderId === socket?.id && m.recipientSocketId === partnerSocketId) ||
+        m.chatId === `dm_${partnerSocketId}` ||
+        m.chatId === `dm_${socket?.id}`
+      );
     }
     return true;
   });
@@ -401,7 +448,7 @@ export default function ChatPage({
   );
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#090a0f', fontFamily: "Plus Jakarta Sans, Inter, sans-serif" }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: T.chatBg, color: T.textPrimary, fontFamily: "Plus Jakarta Sans, Inter, sans-serif", transition: 'background 0.4s ease, color 0.35s ease' }}>
 
       {/* Floating emojis */}
       {floatingEmojis.map(item => (
@@ -422,69 +469,118 @@ export default function ChatPage({
       )}
 
       {/* ═══════ LEFT PANEL: WHATSAPP-STYLE CHATS SIDEBAR ═══════ */}
-      <aside style={{
-        width: 360, flexShrink: 0,
-        background: '#111218',
-        borderRight: '1px solid rgba(255, 255, 255, 0.07)',
-        display: 'flex', flexDirection: 'column',
-        zIndex: 1, position: 'relative'
-      }}>
-        {/* WhatsApp Top Header Bar with Clean Prominent CYPR ViAM Branding */}
+      <aside
+        className={`chat-page-sidebar ${showMobileChat ? 'mobile-hidden' : ''}`}
+        style={{
+          width: 360, flexShrink: 0,
+          background: T.chatSidebarBg,
+          borderRight: `1px solid ${T.border2}`,
+          display: 'flex', flexDirection: 'column',
+          zIndex: 1, position: 'relative',
+          transition: 'background 0.4s ease, border-color 0.35s ease'
+        }}
+      >
+
+        {/* WhatsApp Top Header Bar with Clean Prominent CYPR ViAM Branding & SVG Navigation Icons */}
         <div style={{
           height: 68, display: 'flex', alignItems: 'center',
-          justifyContent: 'space-between', padding: '0 16px',
-          background: '#161722', borderBottom: '1px solid rgba(255, 255, 255, 0.08)'
+          justifyContent: 'space-between', padding: '0 12px',
+          background: T.chatSidebarBg,
+          borderBottom: `1px solid ${T.border2}`,
+          gap: '8px', transition: 'background 0.4s ease, border-color 0.35s ease'
         }}>
-          {/* Standalone Large Brand Logo */}
+
+          {/* Brand Logo & Open ViAM AI */}
           <div
             onClick={onOpenHome}
-            style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
+            style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', flexShrink: 0 }}
             title="Return to Home Hub"
           >
             <img
               src="/viam_logo.png"
               alt="CYPR ViAM"
               style={{
-                height: '58px',
+                height: '48px',
                 width: 'auto',
                 objectFit: 'contain',
-                filter: 'drop-shadow(0 2px 14px rgba(255,85,0,0.5))',
-                transition: 'transform 0.2s ease'
+                filter: 'drop-shadow(0 2px 14px rgba(255,85,0,0.5))'
               }}
-              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
-              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
             />
           </div>
 
-          {/* Room Code Link Pill */}
-          <div
-            onClick={copyInvite}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '6px',
-              background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.09)',
-              borderRadius: '16px', padding: '4px 10px', cursor: 'pointer',
-              fontSize: '11.5px', color: '#ff7733', fontWeight: 700, fontFamily: 'monospace',
-              transition: 'all 0.15s ease'
-            }}
-            title="Click to copy invite link"
-            onMouseEnter={e => { e.currentTarget.style.borderColor = '#ff5500'; e.currentTarget.style.background = 'rgba(255, 85, 0, 0.08)'; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.09)'; e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)'; }}
-          >
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 6px #22c55e' }} />
-            <span>{roomId}</span>
-            {copied ? <Check size={12} color="#22c55e" /> : <Copy size={12} color="#71717a" />}
+          {/* SVG Navigation Icons Bar */}
+          <div className="mobile-only-icons" style={{ alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+            {/* 1. Cinema Theater SVG Icon Button */}
+            <button
+              onClick={onOpenCinema}
+              style={{
+                width: '36px', height: '36px', borderRadius: '50%',
+                background: 'rgba(255, 85, 0, 0.15)', border: '1px solid rgba(255, 85, 0, 0.4)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#ff7733', cursor: 'pointer', transition: 'all 0.15s ease'
+              }}
+              title="Open 4K Cinema Theater"
+            >
+              <Film size={18} color="#ff7733" />
+            </button>
+
+            {/* 2. ViAM AI Companion SVG Icon Button */}
+            <button
+              onClick={onOpenAI}
+              style={{
+                width: '36px', height: '36px', borderRadius: '50%',
+                background: 'rgba(168, 85, 247, 0.15)', border: '1px solid rgba(168, 85, 247, 0.4)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#c084fc', cursor: 'pointer', transition: 'all 0.15s ease'
+              }}
+              title="Open ViAM AI Companion"
+            >
+              <Sparkles size={18} color="#c084fc" />
+            </button>
+
+            {/* 3. Home Hub SVG Icon Button */}
+            <button
+              onClick={onOpenHome}
+              style={{
+                width: '36px', height: '36px', borderRadius: '50%',
+                background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#a1a1aa', cursor: 'pointer', transition: 'all 0.15s ease'
+              }}
+              title="Home Hub"
+            >
+              <Home size={18} color="#a1a1aa" />
+            </button>
+
+            {/* 4. Room Code Link Copy Pill */}
+            <div
+              onClick={copyInvite}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '5px',
+                background: T.isLight ? '#f5f2eb' : 'rgba(255, 255, 255, 0.04)',
+                border: T.isLight ? '1px solid rgba(0, 0, 0, 0.08)' : '1px solid rgba(255, 255, 255, 0.09)',
+                borderRadius: '18px', padding: '4px 10px', cursor: 'pointer',
+                fontSize: '11px', color: T.isLight ? '#c2410c' : '#ff7733', fontWeight: 700, fontFamily: 'monospace'
+              }}
+              title="Click to copy invite link"
+            >
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' }} />
+              <span>{roomId}</span>
+              {copied ? <Check size={11} color="#22c55e" /> : <Copy size={11} color={T.isLight ? '#8c7d70' : '#71717a'} />}
+            </div>
           </div>
         </div>
 
         {/* WhatsApp Search & Filter Bar */}
-        <div style={{ padding: '8px 12px', background: '#111218', borderBottom: '1px solid rgba(255, 255, 255, 0.04)' }}>
+        <div style={{ padding: '8px 12px', background: T.chatSearchBg, borderBottom: `1px solid ${T.border1}`, transition: 'background 0.3s ease' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{
-              flex: 1, background: '#1c1d27',
+              flex: 1, background: T.chatSearchInputBg,
+              border: `1px solid ${T.borderInput}`,
               borderRadius: '8px', padding: '6px 12px',
               display: 'flex', alignItems: 'center', gap: '10px'
             }}>
-              <Search size={15} color="#8696a0" />
+              <Search size={15} color={T.chatSubtext} />
               <input
                 type="text"
                 placeholder="Search or start new chat"
@@ -492,16 +588,16 @@ export default function ChatPage({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 style={{
                   width: '100%', background: 'transparent', border: 'none',
-                  color: '#e9edef', fontSize: '13px', outline: 'none'
+                  color: T.textPrimary, fontSize: '13px', outline: 'none'
                 }}
               />
               {searchQuery && (
-                <X size={14} color="#8696a0" style={{ cursor: 'pointer' }} onClick={() => setSearchQuery('')} />
+                <X size={14} color={T.chatSubtext} style={{ cursor: 'pointer' }} onClick={() => setSearchQuery('')} />
               )}
             </div>
             <button
               style={{
-                background: 'transparent', border: 'none', color: '#8696a0',
+                background: 'transparent', border: 'none', color: T.chatSubtext,
                 padding: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
               }}
               title="Filter Chats"
@@ -516,52 +612,57 @@ export default function ChatPage({
 
           {/* 1. MAIN LOUNGE (GROUP CHAT) */}
           <div
-            onClick={() => setActiveChat({ type: 'group', id: 'group', name: 'Main Lounge' })}
+            onClick={() => {
+              setActiveChat({ type: 'group', id: 'group', name: 'Main Lounge' });
+              setShowMobileChat(true);
+            }}
             style={{
               padding: '12px 16px',
-              background: activeChat.type === 'group' ? 'rgba(255, 85, 0, 0.08)' : 'transparent',
-              borderLeft: activeChat.type === 'group' ? '3px solid #ff5500' : '3px solid transparent',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
+              background: activeChat.type === 'group' ? T.chatActiveItemBg : 'transparent',
+              borderLeft: activeChat.type === 'group' ? (T.isLight ? '3px solid #ff5500' : '3px solid #e4e4e7') : '3px solid transparent',
+              borderBottom: `1px solid ${T.chatCardBorder}`,
               display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer',
               transition: 'background 0.15s'
             }}
-            onMouseEnter={e => { if (activeChat.type !== 'group') e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
+            onMouseEnter={e => { if (activeChat.type !== 'group') e.currentTarget.style.background = T.chatHoverItemBg; }}
             onMouseLeave={e => { if (activeChat.type !== 'group') e.currentTarget.style.background = 'transparent'; }}
           >
             {/* Group Avatar */}
             <div style={{
-              width: 46, height: 46, borderRadius: '50%',
-              background: 'linear-gradient(135deg, #ff5500, #b83200)',
+              width: 44, height: 44, borderRadius: '12px',
+              background: T.isLight ? 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)' : 'linear-gradient(135deg, rgba(255,85,0,0.15), rgba(234,88,12,0.08))',
+              border: T.isLight ? '1px solid rgba(255, 85, 0, 0.25)' : '1px solid rgba(255, 85, 0, 0.35)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: '#fff', flexShrink: 0, boxShadow: '0 4px 12px rgba(255,85,0,0.25)'
+              color: '#ff5500', flexShrink: 0,
+              boxShadow: T.isLight ? '0 2px 8px rgba(255, 85, 0, 0.1)' : '0 2px 8px rgba(0,0,0,0.4)'
             }}>
-              <Film size={22} />
+              <Film size={20} />
             </div>
 
             {/* Chat Info */}
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
-                <span style={{ fontSize: '14.5px', fontWeight: '600', color: activeChat.type === 'group' ? '#ff5500' : '#e9edef' }}>
+                <span style={{ fontSize: '14.5px', fontWeight: '600', color: activeChat.type === 'group' ? (T.isLight ? '#ff5500' : '#ffffff') : T.textPrimary }}>
                   Main Lounge
                 </span>
-                <span style={{ fontSize: '11px', color: unreadCounts['group'] > 0 ? '#ff5500' : '#8696a0', fontWeight: '500' }}>
+                <span style={{ fontSize: '11px', color: unreadCounts['group'] > 0 ? '#22c55e' : T.chatSubtext, fontWeight: '500' }}>
                   Now
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ fontSize: '12.5px', color: '#8696a0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div style={{ fontSize: '12.5px', color: T.chatSubtext, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   {groupTyping ? (
-                    <span style={{ color: '#ff5500', fontWeight: '600' }}>{groupTyping} is typing...</span>
+                    <span style={{ color: '#22c55e', fontWeight: '600' }}>{groupTyping} is typing...</span>
                   ) : (
                     <>
-                      <Users size={12} color="#8696a0" />
+                      <Users size={12} color={T.chatSubtext} />
                       <span>{roomUsers.length} members co-watching</span>
                     </>
                   )}
                 </div>
                 {unreadCounts['group'] > 0 && (
                   <span style={{
-                    background: '#ff5500', color: '#fff', fontSize: '10.5px', fontWeight: '700',
+                    background: '#22c55e', color: '#fff', fontSize: '10.5px', fontWeight: '700',
                     padding: '1px 6px', borderRadius: '10px', minWidth: '16px', textAlign: 'center'
                   }}>
                     {unreadCounts['group']}
@@ -575,12 +676,12 @@ export default function ChatPage({
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '14px 16px 6px', fontSize: '11px', fontWeight: '700',
-            textTransform: 'uppercase', color: '#8696a0', letterSpacing: '0.6px'
+            textTransform: 'uppercase', color: T.chatSubtext, letterSpacing: '0.6px'
           }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Lock size={11} color="#8696a0" /> Direct Messages
+              <Lock size={11} color={T.chatSubtext} /> Direct Messages
             </span>
-            <span style={{ background: 'rgba(255,255,255,0.06)', color: '#8696a0', padding: '1px 6px', borderRadius: '8px', fontSize: '10px' }}>
+            <span style={{ background: T.chipBg, color: T.chatSubtext, padding: '1px 6px', borderRadius: '8px', fontSize: '10px' }}>
               {otherMembers.length}
             </span>
           </div>
@@ -595,21 +696,24 @@ export default function ChatPage({
               return (
                 <div
                   key={member.socketId}
-                  onClick={() => setActiveChat({
-                    type: 'direct',
-                    id: member.socketId,
-                    name: member.name,
-                    user: member
-                  })}
+                  onClick={() => {
+                    setActiveChat({
+                      type: 'direct',
+                      id: member.socketId,
+                      name: member.name,
+                      user: member
+                    });
+                    setShowMobileChat(true);
+                  }}
                   style={{
                     padding: '12px 16px',
-                    background: isSelected ? 'rgba(255, 85, 0, 0.08)' : 'transparent',
-                    borderLeft: isSelected ? '3px solid #ff5500' : '3px solid transparent',
-                    borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
+                    background: isSelected ? T.chatActiveItemBg : 'transparent',
+                    borderLeft: isSelected ? (T.isLight ? '3px solid #ff5500' : '3px solid #e4e4e7') : '3px solid transparent',
+                    borderBottom: `1px solid ${T.chatCardBorder}`,
                     display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer',
                     transition: 'background 0.15s'
                   }}
-                  onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
+                  onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = T.chatHoverItemBg; }}
                   onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
                 >
                   {/* Member Avatar */}
@@ -617,13 +721,13 @@ export default function ChatPage({
                     <img
                       src={member.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80"}
                       alt={member.name}
-                      style={{ width: '46px', height: '46px', borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(255,255,255,0.1)' }}
+                      style={{ width: '46px', height: '46px', borderRadius: '50%', objectFit: 'cover', border: `1px solid ${T.border2}` }}
                     />
                     <span style={{
                       position: 'absolute', bottom: 0, right: 0,
                       width: 10, height: 10, borderRadius: '50%',
-                      background: isTyping ? '#ff5500' : '#22c55e',
-                      border: '2px solid #111218'
+                      background: '#22c55e',
+                      border: `2px solid ${T.isLight ? '#f0ebe0' : '#111218'}`
                     }} />
                   </div>
 
@@ -631,7 +735,7 @@ export default function ChatPage({
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                        <span style={{ fontSize: '14.5px', fontWeight: '600', color: isSelected ? '#ff5500' : '#e9edef', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '140px' }}>
+                        <span style={{ fontSize: '14.5px', fontWeight: '600', color: isSelected ? (T.isLight ? '#ff5500' : '#ffffff') : T.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '140px' }}>
                           {member.name}
                         </span>
                         {member.isHost && (
@@ -640,13 +744,13 @@ export default function ChatPage({
                           </span>
                         )}
                       </div>
-                      <span style={{ fontSize: '11px', color: unread > 0 ? '#ff5500' : '#8696a0', fontWeight: '500' }}>
+                      <span style={{ fontSize: '11px', color: unread > 0 ? '#22c55e' : T.chatSubtext, fontWeight: '500' }}>
                         online
                       </span>
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ fontSize: '12.5px', color: isTyping ? '#ff5500' : '#8696a0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <div style={{ fontSize: '12.5px', color: isTyping ? '#22c55e' : T.chatSubtext, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '4px' }}>
                         {isTyping ? (
                           `${member.name} is typing...`
                         ) : (
@@ -658,7 +762,7 @@ export default function ChatPage({
                       </div>
                       {unread > 0 && (
                         <span style={{
-                          background: '#ff5500', color: '#fff', fontSize: '10.5px', fontWeight: '700',
+                          background: '#22c55e', color: '#fff', fontSize: '10.5px', fontWeight: '700',
                           padding: '1px 6px', borderRadius: '10px'
                         }}>
                           {unread}
@@ -671,25 +775,33 @@ export default function ChatPage({
             })
           ) : (
             <div style={{
-              padding: '24px 16px', textAlign: 'center',
+              padding: '28px 16px', textAlign: 'center',
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px'
             }}>
-              <div style={{ fontSize: '12.5px', color: '#8696a0' }}>
+              <div style={{ fontSize: '12px', color: T.isLight ? '#8c7d70' : '#8696a0' }}>
                 No other members in lounge yet.
               </div>
               <button
                 onClick={copyInvite}
                 style={{
-                  padding: '8px 16px', borderRadius: '8px',
-                  background: 'rgba(255,85,0,0.15)', border: '1px solid rgba(255,85,0,0.3)',
-                  color: '#ff5500', fontSize: '12px', fontWeight: '700',
+                  padding: '7px 14px', borderRadius: '10px',
+                  background: T.isLight ? '#f5f2eb' : 'rgba(255,255,255,0.06)',
+                  border: T.isLight ? '1px solid rgba(0, 0, 0, 0.08)' : '1px solid rgba(255,255,255,0.12)',
+                  color: T.isLight ? '#443729' : '#e4e4e7',
+                  fontSize: '11.5px', fontWeight: '700',
                   cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
                   transition: 'all 0.15s'
                 }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#ff5500'; e.currentTarget.style.color = '#fff'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,85,0,0.15)'; e.currentTarget.style.color = '#ff5500'; }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = T.isLight ? '#ede8de' : 'rgba(255,255,255,0.12)';
+                  e.currentTarget.style.color = '#ff5500';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = T.isLight ? '#f5f2eb' : 'rgba(255,255,255,0.06)';
+                  e.currentTarget.style.color = T.isLight ? '#443729' : '#e4e4e7';
+                }}
               >
-                <UserPlus size={14} />
+                <UserPlus size={13} />
                 <span>Invite Partner / Friend</span>
               </button>
             </div>
@@ -698,18 +810,28 @@ export default function ChatPage({
 
         {/* WhatsApp Sidebar Footer */}
         <div style={{
-          padding: '10px 16px', borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-          background: '#161722', display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+          padding: '10px 14px', borderTop: `1px solid ${T.border2}`,
+          background: T.chatFooterBg, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          gap: '8px', transition: 'background 0.3s ease'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#8696a0' }}>
-            <Lock size={12} color="#22c55e" />
-            <span>End-to-end encrypted session</span>
+          {/* Bottom Left: User Profile Avatar Menu */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <HeaderProfileMenu
+              userAccount={currentUser}
+              onOpenProfile={onOpenProfile}
+              onOpenHistory={onOpenProfile}
+              onLogout={onLeave}
+              dropUp={true}
+              theme={theme}
+            />
           </div>
+
+          {/* Bottom Right: Leave Lounge Button */}
           <button
             onClick={onLeave}
             style={{
-              background: 'transparent', border: 'none', color: '#ef4444',
-              fontSize: '11.5px', fontWeight: '700', cursor: 'pointer',
+              background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)', color: '#ef4444',
+              fontSize: '11.5px', fontWeight: '700', cursor: 'pointer', borderRadius: '12px', padding: '5px 10px',
               display: 'flex', alignItems: 'center', gap: '4px'
             }}
             title="Leave Lounge"
@@ -725,32 +847,57 @@ export default function ChatPage({
         onClose={() => setIsProfileOpen(false)}
         userAccount={currentUser}
         onLogout={onLeave}
+        theme={theme}
       />
 
       {/* ═══════ RIGHT: CHAT THREAD & WHATSAPP DYNAMIC HEADER ═══════ */}
-      <main style={{
-        flex: 1, display: 'flex', flexDirection: 'column',
-        minWidth: 0, position: 'relative', zIndex: 1,
-        background: '#0c0d14'
-      }}>
+      <main
+        className={`chat-page-main ${!showMobileChat ? 'mobile-hidden' : ''}`}
+        style={{
+          flex: 1, display: 'flex', flexDirection: 'column',
+          minWidth: 0, position: 'relative', zIndex: 1,
+          background: T.chatBg,
+          transition: 'background 0.35s ease'
+        }}
+      >
 
         {/* WHATSAPP TOP HEADER BAR */}
         <div style={{
           height: 60, display: 'flex', alignItems: 'center',
-          justifyContent: 'space-between', padding: '0 20px',
-          background: '#161722', borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-          flexShrink: 0
+          justifyContent: 'space-between', padding: '0 16px',
+          background: T.chatHeaderBg, borderBottom: `1px solid ${T.border2}`,
+          flexShrink: 0, transition: 'background 0.35s ease, border-color 0.3s ease'
         }}>
-          {/* Header Left: Current Thread Info with WhatsApp Avatar & Status */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* Header Left: Current Thread Info with Mobile Back Button & Avatar */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={() => setShowMobileChat(false)}
+              className="mobile-back-btn"
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#ff5500',
+                display: 'none',
+                alignItems: 'center',
+                cursor: 'pointer',
+                padding: '4px',
+                marginRight: '2px'
+              }}
+              title="Back to Lounge Members"
+            >
+              <ArrowLeft size={20} />
+            </button>
             {activeChat.type === 'group' ? (
               <div style={{
-                width: 40, height: 40, borderRadius: '50%',
-                background: 'linear-gradient(135deg, #ff5500, #b83200)',
+                width: 38, height: 38, borderRadius: '10px',
+                background: T.isLight ? 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)' : 'linear-gradient(135deg, rgba(255,85,0,0.15), rgba(234,88,12,0.08))',
+                border: T.isLight ? '1px solid rgba(255, 85, 0, 0.25)' : '1px solid rgba(255, 85, 0, 0.35)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#fff', flexShrink: 0, boxShadow: '0 2px 8px rgba(255,85,0,0.3)'
+                color: '#ff5500', flexShrink: 0,
+                boxShadow: T.isLight ? '0 2px 8px rgba(255, 85, 0, 0.1)' : '0 2px 8px rgba(0,0,0,0.4)'
               }}>
-                <Film size={20} />
+                <Film size={18} />
               </div>
             ) : activeChat.id === 'viam-ai-bot' ? (
               <div style={{
@@ -766,19 +913,19 @@ export default function ChatPage({
                 <img
                   src={activeChat.user?.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80"}
                   alt={activeChat.name}
-                  style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(255,255,255,0.15)' }}
+                  style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: `1px solid ${T.border2}` }}
                 />
                 <span style={{
                   position: 'absolute', bottom: 0, right: 0,
                   width: 10, height: 10, borderRadius: '50%',
-                  background: '#22c55e', border: '2px solid #161722'
+                  background: '#22c55e', border: `2px solid ${T.isLight ? '#f0ebe0' : '#161722'}`
                 }} />
               </div>
             )}
 
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '15px', fontWeight: '700', color: '#fff' }}>
+                <span style={{ fontSize: '15px', fontWeight: '700', color: T.textPrimary }}>
                   {activeChat.name}
                 </span>
                 {activeChat.id === 'viam-ai-bot' ? (
@@ -798,133 +945,135 @@ export default function ChatPage({
                 ) : null}
               </div>
 
-              <div style={{ fontSize: '11.5px', color: activeChat.id === 'viam-ai-bot' ? '#c084fc' : '#8696a0', fontWeight: '500' }}>
+              <div style={{ fontSize: '11px', color: activeChat.id === 'viam-ai-bot' ? '#c084fc' : T.chatSubtext, fontWeight: '500' }}>
                 {currentTypingStatus ? `${currentTypingStatus} is typing...` : (
                   activeChat.id === 'viam-ai-bot'
-                    ? 'AI Cinema Co-Host • Instant Intelligence'
+                    ? 'AI Assistant'
                     : activeChat.type === 'group'
-                    ? `${roomUsers.length} members online • Realtime video sync`
-                    : 'Online • End-to-End Encrypted'
+                    ? `${roomUsers.length} online`
+                    : 'online'
                 )}
               </div>
             </div>
           </div>
 
-          {/* Header Right: WhatsApp Action Icons Toolbar */}
+          {/* Header Right: Voice Call, Video Call, and Desktop Navigation */}
+          {/* Header Right: Sleek Action Control Center */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {/* Voice Call */}
+
+            {/* 1. Voice Call Button */}
             <button
               onClick={() => startCall(false)}
               disabled={!!activeCall}
               title={activeChat.type === 'direct' ? `Voice Call with ${activeChat.name}` : "Room Voice Call"}
               style={{
-                width: 36, height: 36, borderRadius: '50%',
-                background: 'transparent', border: 'none',
+                width: '36px', height: '36px', borderRadius: '10px',
+                background: T.isLight ? '#f5f2eb' : 'rgba(255, 255, 255, 0.06)',
+                border: T.isLight ? '1px solid rgba(0, 0, 0, 0.08)' : '1px solid rgba(255, 255, 255, 0.1)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: !activeCall ? 'pointer' : 'not-allowed', color: !activeCall ? '#aebac1' : '#54656f',
-                transition: 'all 0.15s'
+                cursor: !activeCall ? 'pointer' : 'not-allowed',
+                color: !activeCall ? (T.isLight ? '#166534' : '#22c55e') : '#94a3b8',
+                transition: 'all 0.18s ease'
               }}
-              onMouseEnter={e => { if (!activeCall) e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
-              onMouseLeave={e => { if (!activeCall) e.currentTarget.style.background = 'transparent'; }}
+              onMouseEnter={e => {
+                if (!activeCall) {
+                  e.currentTarget.style.background = T.isLight ? 'rgba(34, 197, 94, 0.12)' : 'rgba(34, 197, 94, 0.2)';
+                  e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.35)';
+                }
+              }}
+              onMouseLeave={e => {
+                if (!activeCall) {
+                  e.currentTarget.style.background = T.isLight ? '#f5f2eb' : 'rgba(255, 255, 255, 0.06)';
+                  e.currentTarget.style.borderColor = T.isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.1)';
+                }
+              }}
             >
-              <Phone size={18} />
+              <Phone size={16} />
             </button>
 
-            {/* Video Call */}
+            {/* 2. Video Call Button */}
             <button
               onClick={() => startCall(true)}
               disabled={!!activeCall}
               title={activeChat.type === 'direct' ? `Video Call with ${activeChat.name}` : "Room Video Call"}
               style={{
-                width: 36, height: 36, borderRadius: '50%',
-                background: 'transparent', border: 'none',
+                width: '36px', height: '36px', borderRadius: '10px',
+                background: T.isLight ? '#f5f2eb' : 'rgba(255, 255, 255, 0.06)',
+                border: T.isLight ? '1px solid rgba(0, 0, 0, 0.08)' : '1px solid rgba(255, 255, 255, 0.1)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: !activeCall ? 'pointer' : 'not-allowed', color: !activeCall ? '#aebac1' : '#54656f',
-                transition: 'all 0.15s'
+                cursor: !activeCall ? 'pointer' : 'not-allowed',
+                color: T.isLight ? '#c2410c' : '#ff7733',
+                transition: 'all 0.18s ease'
               }}
-              onMouseEnter={e => { if (!activeCall) e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
-              onMouseLeave={e => { if (!activeCall) e.currentTarget.style.background = 'transparent'; }}
+              onMouseEnter={e => {
+                if (!activeCall) {
+                  e.currentTarget.style.background = T.isLight ? 'rgba(255, 85, 0, 0.12)' : 'rgba(255, 85, 0, 0.25)';
+                  e.currentTarget.style.borderColor = 'rgba(255, 85, 0, 0.35)';
+                }
+              }}
+              onMouseLeave={e => {
+                if (!activeCall) {
+                  e.currentTarget.style.background = T.isLight ? '#f5f2eb' : 'rgba(255, 255, 255, 0.06)';
+                  e.currentTarget.style.borderColor = T.isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.1)';
+                }
+              }}
             >
-              <Video size={18} />
+              <Video size={16} />
             </button>
 
-            {/* Watch Together / Cinema Mode */}
+            {/* 3. Cinema Theater Icon Button */}
             <button
               onClick={onOpenCinema}
-              title="Watch Movies Together (Cinema Lounge)"
+              title="Watch & Choose Movies Together (4K Cinema)"
               style={{
-                width: 36, height: 36, borderRadius: '50%',
-                background: 'rgba(255,85,0,0.15)', border: 'none',
-                color: '#ff5500',
+                width: '36px', height: '36px', borderRadius: '10px',
+                background: T.isLight ? '#f5f2eb' : 'rgba(255, 255, 255, 0.06)',
+                border: T.isLight ? '1px solid rgba(0, 0, 0, 0.08)' : '1px solid rgba(255, 255, 255, 0.1)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', transition: 'all 0.15s'
+                cursor: 'pointer',
+                color: T.isLight ? '#9a3412' : '#ea580c',
+                transition: 'all 0.18s ease'
               }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,85,0,0.25)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,85,0,0.15)'}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = T.isLight ? 'rgba(234, 88, 12, 0.12)' : 'rgba(234, 88, 12, 0.25)';
+                e.currentTarget.style.borderColor = 'rgba(234, 88, 12, 0.35)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = T.isLight ? '#f5f2eb' : 'rgba(255, 255, 255, 0.06)';
+                e.currentTarget.style.borderColor = T.isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.1)';
+              }}
             >
-              <Film size={18} />
+              <Film size={16} />
             </button>
 
-            {/* Home Hub Switcher */}
+            {/* 4. ViAM AI Companion Icon Button */}
             <button
-              onClick={onOpenHome}
-              title="Return to Lounge Home Hub"
+              onClick={onOpenAI}
+              title="Open ViAM AI Companion"
               style={{
-                width: 36, height: 36, borderRadius: '50%',
-                background: 'transparent', border: 'none',
-                color: '#aebac1',
+                width: '36px', height: '36px', borderRadius: '10px',
+                background: T.isLight ? '#f5f2eb' : 'rgba(255, 255, 255, 0.06)',
+                border: T.isLight ? '1px solid rgba(0, 0, 0, 0.08)' : '1px solid rgba(255, 255, 255, 0.1)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', transition: 'all 0.15s'
+                cursor: 'pointer',
+                color: T.isLight ? '#7e22ce' : '#c084fc',
+                transition: 'all 0.18s ease'
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#fff'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#aebac1'; }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = T.isLight ? 'rgba(168, 85, 247, 0.12)' : 'rgba(168, 85, 247, 0.25)';
+                e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.35)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = T.isLight ? '#f5f2eb' : 'rgba(255, 255, 255, 0.06)';
+                e.currentTarget.style.borderColor = T.isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.1)';
+              }}
             >
-              <Home size={18} />
+              <Sparkles size={16} />
             </button>
 
-            <div style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.1)', margin: '0 4px' }} />
-
-            {/* Profile Avatar Menu */}
-            <HeaderProfileMenu
-              userAccount={currentUser}
-              onOpenProfile={onOpenProfile}
-              onOpenHistory={onOpenProfile}
-              onLogout={onLeave}
-            />
+            {/* 5. Voice Assistant */}
+            <VoiceAssistant onGlobalVoiceAction={onGlobalVoiceAction} theme={theme} showLabel={false} />
           </div>
-        </div>
-
-        {/* Quick AI Action Chips Bar */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 16px',
-          background: 'rgba(17, 18, 24, 0.75)', borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
-          overflowX: 'auto', whiteSpace: 'nowrap'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: '800', color: '#c084fc', textTransform: 'uppercase' }}>
-            <Sparkles size={12} />
-            <span>AI Prompts:</span>
-          </div>
-          {quickAiPrompts.map((p, idx) => {
-            const IconComp = p.icon;
-            return (
-              <button
-                key={idx}
-                onClick={() => handleSendMessage({ type: 'text', text: p.prompt })}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.08)',
-                  borderRadius: '16px', padding: '4px 10px',
-                  color: '#e4e4e7', fontSize: '11.5px', fontWeight: '600',
-                  cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px',
-                  transition: 'all 0.15s'
-                }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = '#c084fc'; e.currentTarget.style.background = 'rgba(168, 85, 247, 0.12)'; e.currentTarget.style.color = '#fff'; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'; e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)'; e.currentTarget.style.color = '#e4e4e7'; }}
-              >
-                {IconComp && <IconComp size={12} color="#c084fc" />}
-                <span>{p.label}</span>
-              </button>
-            );
-          })}
         </div>
 
         {/* Messages Stream for Current Selected Thread */}
@@ -935,6 +1084,7 @@ export default function ChatPage({
           onSendReaction={handleSendReaction}
           partnerTyping={!searchQuery ? currentTypingStatus : null}
           socket={socket}
+          theme={theme}
         />
 
         {/* WhatsApp-Style Chat Input Bar */}
@@ -944,6 +1094,7 @@ export default function ChatPage({
           partnerName={activeChat.name}
           currentUser={currentUser}
           activeChat={activeChat}
+          theme={theme}
         />
       </main>
     </div>

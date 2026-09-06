@@ -1,21 +1,34 @@
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 const nodemailer = require('nodemailer');
 
 let mailTransporter = null;
 
 async function initMailer() {
   if (process.env.SMTP_HOST && process.env.SMTP_USER) {
-    mailTransporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT) || 587,
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
-      }
-    });
+    const isGmail = process.env.SMTP_HOST.includes('gmail');
+    mailTransporter = nodemailer.createTransport(
+      isGmail
+        ? {
+            service: 'gmail',
+            auth: {
+              user: process.env.SMTP_USER,
+              pass: process.env.SMTP_PASS
+            }
+          }
+        : {
+            host: process.env.SMTP_HOST,
+            port: Number(process.env.SMTP_PORT) || 587,
+            secure: process.env.SMTP_SECURE === 'true',
+            auth: {
+              user: process.env.SMTP_USER,
+              pass: process.env.SMTP_PASS
+            }
+          }
+    );
     console.log(`📧 [CYPR Mailer] Configured custom SMTP server for ${process.env.SMTP_USER}`);
   } else {
+
     try {
       const testAccount = await nodemailer.createTestAccount();
       mailTransporter = nodemailer.createTransport({
@@ -99,8 +112,9 @@ async function sendEmailOtp(toEmail, otpCode) {
 
   if (mailTransporter) {
     try {
+      const defaultFrom = process.env.SMTP_USER ? `"CYPR ViAM" <${process.env.SMTP_USER}>` : '"CYPR ViAM Private Lounge" <no-reply@cypr.com>';
       const mailOptions = {
-        from: `"CYPR ViAM Private Lounge" <${process.env.SMTP_FROM || 'no-reply@cypr.com'}>`,
+        from: process.env.SMTP_FROM || defaultFrom,
         to: toEmail,
         subject: `🔒 Your CYPR ViAM OTP Code: ${otpCode}`,
         html: htmlContent

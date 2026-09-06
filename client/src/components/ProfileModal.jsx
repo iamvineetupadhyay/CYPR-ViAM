@@ -3,12 +3,16 @@ import {
   X, User, Mail, Phone, Heart, Film, Users, Clock, ShieldCheck,
   LogOut, Play, Copy, Check, Sparkles, History, Monitor, Trash2
 } from 'lucide-react';
+import { getT } from '../utils/themeTokens';
 
-export default function ProfileModal({ isOpen, onClose, userAccount, onLogout, onRejoinRoom, onPlayShow }) {
+export default function ProfileModal({ isOpen, onClose, userAccount, onLogout, onRejoinRoom, onPlayShow, theme }) {
   const [activeTab, setActiveTab] = useState('rooms'); // 'rooms' | 'shows' | 'stats'
   const [roomHistory, setRoomHistory] = useState([]);
   const [showHistory, setShowHistory] = useState([]);
   const [copiedCode, setCopiedCode] = useState('');
+
+  const currentTheme = theme || (typeof document !== 'undefined' && document.body.classList.contains('light-theme') ? 'light' : 'dark');
+  const T = getT(currentTheme);
 
   useEffect(() => {
     if (isOpen) {
@@ -85,26 +89,26 @@ export default function ProfileModal({ isOpen, onClose, userAccount, onLogout, o
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 9999,
-      background: 'rgba(5, 3, 2, 0.88)',
-      backdropFilter: 'blur(16px)',
+      background: T.isLight ? 'rgba(0, 0, 0, 0.45)' : 'rgba(0, 0, 0, 0.82)',
+      backdropFilter: 'blur(20px)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: '20px', animation: 'fadeIn 0.25s ease-out'
+      padding: '20px', animation: 'fadeIn 0.2s ease-out'
     }}>
       <div style={{
         width: '100%', maxWidth: '780px', maxHeight: '90vh',
-        background: '#0e0a08',
-        border: '1.5px solid rgba(255, 85, 0, 0.35)',
-        borderRadius: '28px',
-        boxShadow: '0 30px 90px rgba(0,0,0,0.9), 0 0 40px rgba(255,85,0,0.2)',
+        background: T.surfaceModal,
+        border: `1px solid ${T.border2}`,
+        borderRadius: '20px',
+        boxShadow: T.isLight ? '0 24px 60px rgba(0, 0, 0, 0.16)' : '0 24px 70px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.03)',
         display: 'flex', flexDirection: 'column', overflow: 'hidden',
-        position: 'relative'
+        position: 'relative', backdropFilter: 'blur(24px)'
       }}>
 
         {/* 1. TOP HEADER BANNER */}
         <div style={{
           padding: '24px 28px 18px',
-          background: 'linear-gradient(135deg, rgba(255,85,0,0.15), rgba(128,0,255,0.1))',
-          borderBottom: '1px solid rgba(255,85,0,0.2)',
+          background: T.isLight ? 'rgba(0,0,0,0.02)' : 'rgba(255, 255, 255, 0.02)',
+          borderBottom: `1px solid ${T.borderDivider}`,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -114,35 +118,35 @@ export default function ProfileModal({ isOpen, onClose, userAccount, onLogout, o
                 alt={userAccount?.name || 'User'}
                 style={{
                   width: '64px', height: '64px', borderRadius: '50%',
-                  objectFit: 'cover', border: '2.5px solid #ff5500',
-                  boxShadow: '0 0 20px rgba(255,85,0,0.4)'
+                  objectFit: 'cover', border: `1.5px solid ${T.borderInput}`,
+                  boxShadow: T.isLight ? '0 4px 12px rgba(0,0,0,0.08)' : '0 4px 16px rgba(0,0,0,0.4)'
                 }}
               />
               <span style={{
                 position: 'absolute', bottom: 2, right: 2,
                 width: 14, height: 14, borderRadius: '50%',
-                background: '#10b981', border: '2px solid #0e0a08'
+                background: '#22c55e', border: `2px solid ${T.surface1}`
               }} />
             </div>
 
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <h2 style={{ margin: 0, fontSize: '22px', fontWeight: '800', color: '#fff', fontFamily: 'Outfit, sans-serif' }}>
+                <h2 style={{ margin: 0, fontSize: '22px', fontWeight: '700', color: T.textPrimary, fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
                   {userAccount?.name || 'CYPR Member'}
                 </h2>
                 <span style={{
-                  fontSize: '11px', fontWeight: '800', textTransform: 'uppercase',
-                  background: 'rgba(255,85,0,0.2)', color: '#ff5500',
-                  border: '1px solid rgba(255,85,0,0.5)', borderRadius: '12px',
-                  padding: '3px 10px', letterSpacing: '0.5px'
+                  fontSize: '11px', fontWeight: '700', textTransform: 'uppercase',
+                  background: T.chipBg, color: T.textMuted2,
+                  border: `1px solid ${T.chipBorder}`, borderRadius: '12px',
+                  padding: '3px 10px', letterSpacing: '0.3px'
                 }}>
-                  👑 Pro Duo
+                  Verified Account
                 </span>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '6px', fontSize: '12.5px', color: 'rgba(255,255,255,0.6)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '6px', fontSize: '12.5px', color: T.textMuted1 }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <Mail size={13} color="#ff5500" /> {userAccount?.email || 'user@cypr.app'}
+                  <Mail size={13} color={T.textMuted2} /> {userAccount?.email || 'user@cypr.app'}
                 </span>
                 {userAccount?.gender && (
                   <span>• {userAccount.gender}</span>
@@ -157,13 +161,13 @@ export default function ProfileModal({ isOpen, onClose, userAccount, onLogout, o
           <button
             onClick={onClose}
             style={{
-              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
-              color: '#fff', borderRadius: '50%', width: 38, height: 38,
+              background: T.pillBg, border: `1px solid ${T.pillBorder}`,
+              color: T.textMuted1, borderRadius: '50%', width: 36, height: 36,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: 'pointer', transition: 'all 0.15s'
             }}
-            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,85,0,0.2)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
+            onMouseEnter={e => { e.currentTarget.style.background = T.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = T.textPrimary; }}
+            onMouseLeave={e => { e.currentTarget.style.background = T.pillBg; e.currentTarget.style.color = T.textMuted1; }}
           >
             <X size={18} />
           </button>
@@ -172,34 +176,34 @@ export default function ProfileModal({ isOpen, onClose, userAccount, onLogout, o
         {/* 2. STATS SUMMARY ROW */}
         <div style={{
           display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px',
-          padding: '16px 28px', background: 'rgba(255,255,255,0.02)',
-          borderBottom: '1px solid rgba(255,255,255,0.06)'
+          padding: '16px 28px', background: T.isLight ? 'rgba(0,0,0,0.01)' : 'rgba(255,255,255,0.01)',
+          borderBottom: `1px solid ${T.borderDivider}`
         }}>
-          <div style={{ background: 'rgba(255,85,0,0.08)', border: '1px solid rgba(255,85,0,0.2)', borderRadius: '16px', padding: '12px 16px' }}>
-            <div style={{ fontSize: '11px', fontWeight: '800', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>Rooms Joined</div>
-            <div style={{ fontSize: '20px', fontWeight: '900', color: '#ff5500', marginTop: '2px', fontFamily: 'Outfit, sans-serif' }}>
+          <div style={{ background: T.chipBg, border: `1px solid ${T.chipBorder}`, borderRadius: '14px', padding: '12px 16px' }}>
+            <div style={{ fontSize: '11px', fontWeight: '700', color: T.textMuted2, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Rooms Joined</div>
+            <div style={{ fontSize: '20px', fontWeight: '800', color: T.textPrimary, marginTop: '2px', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
               {roomHistory.length || 1} Rooms
             </div>
           </div>
 
-          <div style={{ background: 'rgba(128,0,255,0.08)', border: '1px solid rgba(128,0,255,0.2)', borderRadius: '16px', padding: '12px 16px' }}>
-            <div style={{ fontSize: '11px', fontWeight: '800', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>Shows Watched</div>
-            <div style={{ fontSize: '20px', fontWeight: '900', color: '#a855f7', marginTop: '2px', fontFamily: 'Outfit, sans-serif' }}>
+          <div style={{ background: T.chipBg, border: `1px solid ${T.chipBorder}`, borderRadius: '14px', padding: '12px 16px' }}>
+            <div style={{ fontSize: '11px', fontWeight: '700', color: T.textMuted2, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Shows Watched</div>
+            <div style={{ fontSize: '20px', fontWeight: '800', color: T.textPrimary, marginTop: '2px', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
               {showHistory.length || 2} Shows
             </div>
           </div>
 
-          <div style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '16px', padding: '12px 16px' }}>
-            <div style={{ fontSize: '11px', fontWeight: '800', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>Watch Time</div>
-            <div style={{ fontSize: '20px', fontWeight: '900', color: '#10b981', marginTop: '2px', fontFamily: 'Outfit, sans-serif' }}>
+          <div style={{ background: T.chipBg, border: `1px solid ${T.chipBorder}`, borderRadius: '14px', padding: '12px 16px' }}>
+            <div style={{ fontSize: '11px', fontWeight: '700', color: T.textMuted2, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Watch Time</div>
+            <div style={{ fontSize: '20px', fontWeight: '800', color: T.textPrimary, marginTop: '2px', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
               14.5 Hours
             </div>
           </div>
 
-          <div style={{ background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.2)', borderRadius: '16px', padding: '12px 16px' }}>
-            <div style={{ fontSize: '11px', fontWeight: '800', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>Security & E2EE</div>
-            <div style={{ fontSize: '15px', fontWeight: '800', color: '#f43f5e', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <ShieldCheck size={16} /> AES-256
+          <div style={{ background: T.chipBg, border: `1px solid ${T.chipBorder}`, borderRadius: '14px', padding: '12px 16px' }}>
+            <div style={{ fontSize: '11px', fontWeight: '700', color: T.textMuted2, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Security & E2EE</div>
+            <div style={{ fontSize: '14.5px', fontWeight: '700', color: T.textMuted1, marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <ShieldCheck size={16} color="#22c55e" /> AES-256
             </div>
           </div>
         </div>
@@ -207,16 +211,16 @@ export default function ProfileModal({ isOpen, onClose, userAccount, onLogout, o
         {/* 3. TAB NAVIGATION */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '12px 28px 0', borderBottom: '1px solid rgba(255,255,255,0.08)'
+          padding: '12px 28px 0', borderBottom: `1px solid ${T.borderDivider}`
         }}>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button
               onClick={() => setActiveTab('rooms')}
               style={{
-                background: activeTab === 'rooms' ? 'rgba(255,85,0,0.15)' : 'transparent',
-                border: 'none', borderBottom: activeTab === 'rooms' ? '2.5px solid #ff5500' : '2.5px solid transparent',
-                color: activeTab === 'rooms' ? '#ff5500' : 'rgba(255,255,255,0.6)',
-                padding: '10px 18px', fontSize: '13.5px', fontWeight: '800', cursor: 'pointer',
+                background: activeTab === 'rooms' ? (T.isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255, 255, 255, 0.08)') : 'transparent',
+                border: 'none', borderBottom: activeTab === 'rooms' ? `2.5px solid ${T.textPrimary}` : '2.5px solid transparent',
+                color: activeTab === 'rooms' ? T.textPrimary : T.textMuted2,
+                padding: '10px 18px', fontSize: '13.5px', fontWeight: '700', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.15s'
               }}
             >
@@ -227,10 +231,10 @@ export default function ProfileModal({ isOpen, onClose, userAccount, onLogout, o
             <button
               onClick={() => setActiveTab('shows')}
               style={{
-                background: activeTab === 'shows' ? 'rgba(255,85,0,0.15)' : 'transparent',
-                border: 'none', borderBottom: activeTab === 'shows' ? '2.5px solid #ff5500' : '2.5px solid transparent',
-                color: activeTab === 'shows' ? '#ff5500' : 'rgba(255,255,255,0.6)',
-                padding: '10px 18px', fontSize: '13.5px', fontWeight: '800', cursor: 'pointer',
+                background: activeTab === 'shows' ? (T.isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255, 255, 255, 0.08)') : 'transparent',
+                border: 'none', borderBottom: activeTab === 'shows' ? `2.5px solid ${T.textPrimary}` : '2.5px solid transparent',
+                color: activeTab === 'shows' ? T.textPrimary : T.textMuted2,
+                padding: '10px 18px', fontSize: '13.5px', fontWeight: '700', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.15s'
               }}
             >
@@ -242,12 +246,12 @@ export default function ProfileModal({ isOpen, onClose, userAccount, onLogout, o
           <button
             onClick={clearHistory}
             style={{
-              background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.4)',
+              background: 'transparent', border: 'none', color: T.textMuted2,
               fontSize: '11.5px', fontWeight: '700', cursor: 'pointer',
               display: 'flex', alignItems: 'center', gap: '4px'
             }}
             onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
-            onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.4)'}
+            onMouseLeave={e => e.currentTarget.style.color = T.textMuted2}
             title="Clear saved watch history"
           >
             <Trash2 size={13} />
@@ -264,40 +268,40 @@ export default function ProfileModal({ isOpen, onClose, userAccount, onLogout, o
               roomHistory.map((room, idx) => (
                 <div key={idx} style={{
                   padding: '16px 20px', borderRadius: '18px',
-                  background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+                  background: T.chipBg, border: `1px solid ${T.chipBorder}`,
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   transition: 'all 0.15s'
                 }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,85,0,0.06)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                  onMouseEnter={e => e.currentTarget.style.background = T.isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)'}
+                  onMouseLeave={e => e.currentTarget.style.background = T.chipBg}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                     <div style={{
                       width: 44, height: 44, borderRadius: '50%',
-                      background: 'rgba(255,85,0,0.15)', border: '1.5px solid rgba(255,85,0,0.4)',
+                      background: T.pillBg, border: `1px solid ${T.pillBorder}`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '18px', fontWeight: '900', color: '#ff5500'
+                      color: T.textMuted1
                     }}>
-                      💕
+                      <Users size={20} />
                     </div>
 
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span style={{ fontSize: '16px', fontWeight: '800', color: '#fff', fontFamily: 'monospace' }}>
+                        <span style={{ fontSize: '16px', fontWeight: '800', color: T.textPrimary, fontFamily: 'monospace' }}>
                           ROOM: {room.roomId.toUpperCase()}
                         </span>
                         <span style={{
                           fontSize: '10.5px', fontWeight: '800',
-                          background: room.status === 'Active' ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.1)',
-                          color: room.status === 'Active' ? '#10b981' : 'rgba(255,255,255,0.5)',
+                          background: room.status === 'Active' ? 'rgba(16,185,129,0.2)' : (T.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.1)'),
+                          color: room.status === 'Active' ? '#10b981' : T.textMuted2,
                           padding: '2px 8px', borderRadius: '10px'
                         }}>
                           {room.status || 'Active'}
                         </span>
                       </div>
 
-                      <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginTop: '3px' }}>
-                        Partner: <strong style={{ color: '#fff' }}>{room.partner || 'Co-Watcher'}</strong> • Joined: {fmtDate(room.createdAt)}
+                      <div style={{ fontSize: '12px', color: T.textMuted1, marginTop: '3px' }}>
+                        Partner: <strong style={{ color: T.textPrimary }}>{room.partner || 'Co-Watcher'}</strong> • Joined: {fmtDate(room.createdAt)}
                       </div>
                     </div>
                   </div>
@@ -306,8 +310,8 @@ export default function ProfileModal({ isOpen, onClose, userAccount, onLogout, o
                     <button
                       onClick={() => copyCode(room.roomId)}
                       style={{
-                        background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
-                        color: '#fff', padding: '8px 12px', borderRadius: '12px',
+                        background: T.pillBg, border: `1px solid ${T.pillBorder}`,
+                        color: T.textPrimary, padding: '8px 12px', borderRadius: '12px',
                         fontSize: '12px', fontWeight: '700', cursor: 'pointer',
                         display: 'flex', alignItems: 'center', gap: '6px'
                       }}
@@ -319,19 +323,23 @@ export default function ProfileModal({ isOpen, onClose, userAccount, onLogout, o
                     <button
                       onClick={() => { onClose(); onRejoinRoom?.(room.roomId); }}
                       style={{
-                        background: '#ff5500', border: 'none', color: '#fff',
+                        background: T.isLight ? '#1a1208' : 'rgba(255,255,255,0.12)',
+                        border: `1px solid ${T.borderInput}`,
+                        color: T.isLight ? '#fff' : '#fff',
                         padding: '8px 16px', borderRadius: '12px', fontSize: '12px',
-                        fontWeight: '800', cursor: 'pointer', display: 'flex',
-                        alignItems: 'center', gap: '6px', boxShadow: '0 0 16px rgba(255,85,0,0.4)'
+                        fontWeight: '700', cursor: 'pointer', display: 'flex',
+                        alignItems: 'center', gap: '6px', transition: 'all 0.15s'
                       }}
+                      onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
+                      onMouseLeave={e => e.currentTarget.style.opacity = '1'}
                     >
-                      <span>Rejoin Room 🚀</span>
+                      <span>Rejoin Room</span>
                     </button>
                   </div>
                 </div>
               ))
             ) : (
-              <div style={{ textAlign: 'center', padding: '40px 20px', color: 'rgba(255,255,255,0.4)', fontSize: '13.5px' }}>
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: T.textMuted2, fontSize: '13.5px' }}>
                 No rooms joined yet. Create or join a room to build your co-watching history!
               </div>
             )
@@ -343,7 +351,7 @@ export default function ProfileModal({ isOpen, onClose, userAccount, onLogout, o
               showHistory.map((show, idx) => (
                 <div key={idx} style={{
                   padding: '14px 18px', borderRadius: '18px',
-                  background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+                  background: T.chipBg, border: `1px solid ${T.chipBorder}`,
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   gap: '16px'
                 }}>
@@ -351,16 +359,16 @@ export default function ProfileModal({ isOpen, onClose, userAccount, onLogout, o
                     <img
                       src={show.thumbnail || "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=300&q=80"}
                       alt={show.title}
-                      style={{ width: '70px', height: '48px', borderRadius: '10px', objectFit: 'cover', border: '1px solid rgba(255,85,0,0.3)' }}
+                      style={{ width: '70px', height: '48px', borderRadius: '10px', objectFit: 'cover', border: `1px solid ${T.borderInput}` }}
                     />
 
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '14px', fontWeight: '800', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div style={{ fontSize: '14px', fontWeight: '800', color: T.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {show.title}
                       </div>
 
-                      <div style={{ fontSize: '11.5px', color: 'rgba(255,255,255,0.5)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span style={{ color: '#ff5500', fontWeight: '700', textTransform: 'uppercase' }}>
+                      <div style={{ fontSize: '11.5px', color: T.textMuted1, marginTop: '2px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ color: T.textMuted2, fontWeight: '600', textTransform: 'uppercase' }}>
                           {show.sourceType || 'Movie Stream'}
                         </span>
                         <span>• {fmtDate(show.watchedAt)}</span>
@@ -371,19 +379,22 @@ export default function ProfileModal({ isOpen, onClose, userAccount, onLogout, o
                   <button
                     onClick={() => { onClose(); onPlayShow?.(show); }}
                     style={{
-                      background: 'rgba(255,85,0,0.15)', border: '1px solid rgba(255,85,0,0.4)',
-                      color: '#ff5500', padding: '8px 16px', borderRadius: '12px',
-                      fontSize: '12px', fontWeight: '800', cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0
+                      background: T.pillBg, border: `1px solid ${T.pillBorder}`,
+                      color: T.textPrimary, padding: '8px 16px', borderRadius: '12px',
+                      fontSize: '12px', fontWeight: '700', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0,
+                      transition: 'all 0.15s'
                     }}
+                    onMouseEnter={e => { e.currentTarget.style.background = T.isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = T.pillBg; }}
                   >
-                    <Play size={13} fill="#ff5500" />
+                    <Play size={13} fill={T.textMuted1} color={T.textMuted1} />
                     <span>Play Again</span>
                   </button>
                 </div>
               ))
             ) : (
-              <div style={{ textAlign: 'center', padding: '40px 20px', color: 'rgba(255,255,255,0.4)', fontSize: '13.5px' }}>
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: T.textMuted2, fontSize: '13.5px' }}>
                 No shows watched yet. Select a movie or anime stream in Cinema mode to start!
               </div>
             )
@@ -393,8 +404,8 @@ export default function ProfileModal({ isOpen, onClose, userAccount, onLogout, o
 
         {/* 5. FOOTER LOGOUT & ACTION BAR */}
         <div style={{
-          padding: '16px 28px', background: '#090705',
-          borderTop: '1px solid rgba(255,255,255,0.08)',
+          padding: '16px 28px', background: T.surface1,
+          borderTop: `1px solid ${T.borderDivider}`,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between'
         }}>
           <button
@@ -413,8 +424,8 @@ export default function ProfileModal({ isOpen, onClose, userAccount, onLogout, o
           <button
             onClick={onClose}
             style={{
-              background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)',
-              color: '#fff', padding: '8px 22px', borderRadius: '14px',
+              background: T.pillBg, border: `1px solid ${T.pillBorder}`,
+              color: T.textPrimary, padding: '8px 22px', borderRadius: '14px',
               fontSize: '12.5px', fontWeight: '800', cursor: 'pointer'
             }}
           >
