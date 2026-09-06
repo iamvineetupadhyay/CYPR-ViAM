@@ -439,11 +439,8 @@ export function useWebRTC(socket, roomId, user) {
   // Start Call (Trigger Camera / Mic On Demand)
   const startLocalCall = useCallback(async (isVideo = true, withAudio = true) => {
     const stream = await initLocalMedia(isVideo, withAudio);
-    if (stream && socket) {
-      socket.emit('peer-ready', { roomId, user });
-    }
     return stream;
-  }, [initLocalMedia, socket, roomId, user]);
+  }, [initLocalMedia]);
 
   // Toggle Microphone
   const toggleMic = () => {

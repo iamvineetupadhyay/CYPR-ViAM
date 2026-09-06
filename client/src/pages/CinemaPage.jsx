@@ -248,9 +248,6 @@ export default function CinemaPage({
         targetSocketId: requesterSocketId,
         senderSocketId: socket?.id
       });
-      if (requesterSocketId && createOfferAndSend) {
-        createOfferAndSend(requesterSocketId);
-      }
     }
   };
 

@@ -370,12 +370,6 @@ function completeUserJoin(io, socket, room, user) {
   // Send current media state and chat history to the newly joined/reconnected peer
   socket.emit('initial-media-state', room.mediaState);
   socket.emit('initial-chat-history', room.messages || []);
-
-  // If there is already an existing peer, notify them to initiate WebRTC offer
-  socket.to(room.roomId).emit('peer-ready', {
-    initiatorId: socket.id,
-    user: user
-  });
 }
 
 module.exports = registerRoomHandlers;
