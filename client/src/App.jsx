@@ -8,6 +8,7 @@ import ProfilePage from './pages/ProfilePage';
 import CallPage from './pages/CallPage';
 import AiPage from './pages/AiPage';
 import FloatingCallWindow from './components/FloatingCallWindow';
+import GlobalIncomingCallModal from './components/GlobalIncomingCallModal';
 import { useWebRTC } from './hooks/useWebRTC';
 import { SERVER_URL } from './utils/apiUrl';
 
@@ -20,6 +21,7 @@ export default function App() {
   const [callIsVideo, setCallIsVideo] = useState(true);
   const [isCallActive, setIsCallActive] = useState(false);
   const [isCallMinimized, setIsCallMinimized] = useState(false);
+  const [incomingCall, setIncomingCall] = useState(null);
   const [knockPending, setKnockPending] = useState(false);
   const [knockRequests, setKnockRequests] = useState([]);
 
@@ -235,6 +237,20 @@ export default function App() {
       window.history.pushState({}, '', window.location.pathname);
     });
 
+    // Global Incoming Call Signaling (Active across Cinema, Home, Profile, AI, and Chat)
+    newSocket.on('call-invite', ({ from, fromName, isVideo }) => {
+      console.log('📞 [Global Call Received]', { from, fromName, isVideo });
+      setIncomingCall({ from, fromName, isVideo });
+    });
+
+    newSocket.on('call-ended', () => {
+      setIncomingCall(null);
+    });
+
+    newSocket.on('call-declined', () => {
+      setIncomingCall(null);
+    });
+
     return () => newSocket.disconnect();
   }, []);
 
@@ -275,6 +291,7 @@ export default function App() {
 
   const handleLeave = () => {
     if (isCallActive) handleEndCall();
+    setIncomingCall(null);
     sessionStorage.removeItem('cypr_active_room');
     setPage('connect');
     setCurrentUser(null);
@@ -290,11 +307,29 @@ export default function App() {
     setPage('call');
   };
 
+  const handleAcceptIncomingCall = (callData) => {
+    const isVideo = callData?.isVideo !== false;
+    setCallIsVideo(isVideo);
+    setIncomingCall(null);
+    if (socket) {
+      socket.emit('call-accepted', { to: callData?.from || roomId });
+    }
+    handleOpenCall(isVideo);
+  };
+
+  const handleDeclineIncomingCall = (callData) => {
+    if (socket) {
+      socket.emit('call-declined', { to: callData?.from || roomId });
+    }
+    setIncomingCall(null);
+  };
+
   const handleEndCall = () => {
     if (socket) socket.emit('call-ended', { to: roomId });
     webrtc.stopLocalMedia();
     setIsCallActive(false);
     setIsCallMinimized(false);
+    setIncomingCall(null);
     setPage('chat');
   };
 
@@ -503,6 +538,13 @@ export default function App() {
           ))}
         </div>
       )}
+
+      {/* GLOBAL INCOMING CALL MODAL WITH SYNTHESIZED RINGTONE (Active across ALL pages: Cinema, Home, Profile, AI, Chat) */}
+      <GlobalIncomingCallModal
+        incomingCall={incomingCall}
+        onAccept={handleAcceptIncomingCall}
+        onDecline={handleDeclineIncomingCall}
+      />
     </>
   );
 }

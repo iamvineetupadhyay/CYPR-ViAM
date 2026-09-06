@@ -11,7 +11,6 @@ import ChatInput from '../components/ChatInput';
 import ProfileModal from '../components/ProfileModal';
 import HeaderProfileMenu from '../components/HeaderProfileMenu';
 import VoiceAssistant from '../components/VoiceAssistant';
-import { useWebRTC } from '../hooks/useWebRTC';
 import { encryptPayload, decryptPayload } from '../utils/cryptoUtils';
 import { getT } from '../utils/themeTokens';
 
@@ -25,55 +24,6 @@ const quickAiPrompts = [
   { label: 'Movie Trivia', prompt: 'Give me fun trivia about Inception', icon: Sparkles },
   { label: 'Cinema Quiz Game', prompt: "Let's play a movie guessing quiz game", icon: Dices }
 ];
-
-/* ─────────────────────────────────────────
-   INCOMING CALL BANNER
-───────────────────────────────────────── */
-function IncomingCallBanner({ partnerName, onAccept, onDecline, isVideoCall }) {
-  return (
-    <div style={{
-      position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)',
-      zIndex: 9999, background: '#141417',
-      border: '1px solid #27272a',
-      borderRadius: '16px', padding: '14px 20px',
-      boxShadow: '0 20px 40px rgba(0,0,0,0.9)',
-      display: 'flex', alignItems: 'center', gap: '16px',
-      minWidth: 320
-    }}>
-      <div style={{
-        width: 42, height: 42, borderRadius: '50%',
-        background: '#09090b', border: '1px solid #27272a',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: '18px', fontWeight: '700', color: '#fff',
-        flexShrink: 0
-      }}>
-        {(partnerName || '?')[0].toUpperCase()}
-      </div>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: '14px', fontWeight: '700', color: '#fff' }}>{partnerName || 'Partner'}</div>
-        <div style={{ fontSize: '11px', color: '#a1a1aa', marginTop: '2px' }}>
-          Incoming {isVideoCall ? 'Video' : 'Voice'} call...
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: '8px' }}>
-        <button onClick={onDecline} style={{
-          width: 38, height: 38, borderRadius: '50%',
-          background: '#ef4444', border: 'none', color: '#fff',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
-        }} title="Decline">
-          <PhoneOff size={16} />
-        </button>
-        <button onClick={onAccept} style={{
-          width: 38, height: 38, borderRadius: '50%',
-          background: '#22c55e', border: 'none', color: '#fff',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
-        }} title="Accept">
-          {isVideoCall ? <Video size={16} /> : <Phone size={16} />}
-        </button>
-      </div>
-    </div>
-  );
-}
 
 /* ─────────────────────────────────────────
    MAIN CHAT PAGE WITH GROQ AI COMPANION
@@ -105,24 +55,6 @@ export default function ChatPage({
   const [groupTyping, setGroupTyping] = useState(null);
   const [directTyping, setDirectTyping] = useState({}); // { [senderSocketId]: string (senderName) }
   const [unreadCounts, setUnreadCounts] = useState({}); // { [chatKey]: number }
-
-  // Call state
-  const callTypeRef = useRef('video');
-  const [activeCall, setActiveCall] = useState(null);
-  const [incomingCall, setIncomingCall] = useState(null);
-
-  const {
-    localStream, remoteStream,
-    isMicMuted, isCamOff, isCallConnected,
-    peerName, startLocalCall, createOfferAndSend, stopLocalMedia, toggleMic, toggleCam
-  } = useWebRTC(socket, roomId, currentUser);
-
-  // When WebRTC connects, ensure activeCall remains active
-  useEffect(() => {
-    if (isCallConnected && !activeCall) {
-      setActiveCall({ isVideo: callTypeRef.current === 'video' });
-    }
-  }, [isCallConnected, activeCall]);
 
   // Theme is now driven by App.jsx prop — removed local theme state
 
@@ -265,37 +197,7 @@ export default function ChatPage({
       setGroupTyping(prev => (prev === senderName || !senderName ? null : prev));
     });
 
-    socket.on('call-invite', ({ from, fromName, isVideo }) => {
-      callTypeRef.current = isVideo ? 'video' : 'voice';
-      setIncomingCall({ from, fromName, isVideo });
-    });
-
-    socket.on('call-accepted', ({ fromSocketId }) => {
-      setIncomingCall(null);
-      const isVid = callTypeRef.current === 'video';
-      setActiveCall({ isVideo: isVid });
-      if (fromSocketId && createOfferAndSend) {
-        createOfferAndSend(fromSocketId);
-      }
-    });
-
-    socket.on('call-declined', () => {
-      setIncomingCall(null);
-      stopLocalMedia();
-      setActiveCall(null);
-    });
-
-    socket.on('call-ended', () => {
-      stopLocalMedia();
-      setActiveCall(null);
-      setIncomingCall(null);
-    });
-
     socket.on('user-left', ({ userName }) => {
-      if (activeCall) {
-        stopLocalMedia();
-        setActiveCall(null);
-      }
       if (userName) {
         setMessages(prev => [...prev, {
           type: 'text', text: `👋 ${userName} left the lounge.`,
@@ -319,14 +221,10 @@ export default function ChatPage({
       socket.off('reaction-received');
       socket.off('partner-typing');
       socket.off('partner-typing-stop');
-      socket.off('call-invite');
-      socket.off('call-accepted');
-      socket.off('call-declined');
-      socket.off('call-ended');
       socket.off('user-left');
       socket.off('media-changed');
     };
-  }, [socket, roomId, stopLocalMedia, createOfferAndSend, activeCall]);
+  }, [socket, roomId]);
 
   const triggerFloatingEmoji = useCallback((emoji) => {
     const id = Date.now() + Math.random();
@@ -370,44 +268,14 @@ export default function ChatPage({
     socket?.emit('send-reaction', encrypted);
   };
 
-  const startCall = async (isVideo) => {
+  const startCall = (isVideo) => {
     if (activeChat.id === 'viam-ai-bot') {
       alert("🤖 ViAM AI Voice Mode: Type in chat or use the Voice Assistant mic below!");
       return;
     }
-    const targetTo = activeChat.type === 'direct' ? activeChat.id : roomId;
-    socket?.emit('call-invite', { isVideo, to: targetTo });
     if (onOpenCall) {
       onOpenCall(isVideo);
-    } else {
-      callTypeRef.current = isVideo ? 'video' : 'voice';
-      await startLocalCall(isVideo);
-      setActiveCall({ isVideo });
     }
-  };
-
-  const endCall = () => {
-    socket?.emit('call-ended', { to: roomId });
-    stopLocalMedia();
-    setActiveCall(null);
-  };
-
-  const acceptIncoming = async () => {
-    const isVid = incomingCall?.isVideo ?? true;
-    socket?.emit('call-accepted', { to: roomId, fromSocketId: incomingCall?.from });
-    setIncomingCall(null);
-    if (onOpenCall) {
-      onOpenCall(isVid);
-    } else {
-      callTypeRef.current = isVid ? 'video' : 'voice';
-      setActiveCall({ isVideo: isVid });
-      await startLocalCall(isVid);
-    }
-  };
-
-  const declineIncoming = () => {
-    socket?.emit('call-declined', { to: roomId });
-    setIncomingCall(null);
   };
 
   const copyInvite = () => {
@@ -964,28 +832,23 @@ export default function ChatPage({
             {/* 1. Voice Call Button */}
             <button
               onClick={() => startCall(false)}
-              disabled={!!activeCall}
               title={activeChat.type === 'direct' ? `Voice Call with ${activeChat.name}` : "Room Voice Call"}
               style={{
                 width: '36px', height: '36px', borderRadius: '10px',
                 background: T.isLight ? '#f5f2eb' : 'rgba(255, 255, 255, 0.06)',
                 border: T.isLight ? '1px solid rgba(0, 0, 0, 0.08)' : '1px solid rgba(255, 255, 255, 0.1)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: !activeCall ? 'pointer' : 'not-allowed',
-                color: !activeCall ? (T.isLight ? '#166534' : '#22c55e') : '#94a3b8',
+                cursor: 'pointer',
+                color: T.isLight ? '#166534' : '#22c55e',
                 transition: 'all 0.18s ease'
               }}
               onMouseEnter={e => {
-                if (!activeCall) {
-                  e.currentTarget.style.background = T.isLight ? 'rgba(34, 197, 94, 0.12)' : 'rgba(34, 197, 94, 0.2)';
-                  e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.35)';
-                }
+                e.currentTarget.style.background = T.isLight ? 'rgba(34, 197, 94, 0.12)' : 'rgba(34, 197, 94, 0.2)';
+                e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.35)';
               }}
               onMouseLeave={e => {
-                if (!activeCall) {
-                  e.currentTarget.style.background = T.isLight ? '#f5f2eb' : 'rgba(255, 255, 255, 0.06)';
-                  e.currentTarget.style.borderColor = T.isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.1)';
-                }
+                e.currentTarget.style.background = T.isLight ? '#f5f2eb' : 'rgba(255, 255, 255, 0.06)';
+                e.currentTarget.style.borderColor = T.isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.1)';
               }}
             >
               <Phone size={16} />
@@ -994,28 +857,23 @@ export default function ChatPage({
             {/* 2. Video Call Button */}
             <button
               onClick={() => startCall(true)}
-              disabled={!!activeCall}
               title={activeChat.type === 'direct' ? `Video Call with ${activeChat.name}` : "Room Video Call"}
               style={{
                 width: '36px', height: '36px', borderRadius: '10px',
                 background: T.isLight ? '#f5f2eb' : 'rgba(255, 255, 255, 0.06)',
                 border: T.isLight ? '1px solid rgba(0, 0, 0, 0.08)' : '1px solid rgba(255, 255, 255, 0.1)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: !activeCall ? 'pointer' : 'not-allowed',
+                cursor: 'pointer',
                 color: T.isLight ? '#c2410c' : '#ff7733',
                 transition: 'all 0.18s ease'
               }}
               onMouseEnter={e => {
-                if (!activeCall) {
-                  e.currentTarget.style.background = T.isLight ? 'rgba(255, 85, 0, 0.12)' : 'rgba(255, 85, 0, 0.25)';
-                  e.currentTarget.style.borderColor = 'rgba(255, 85, 0, 0.35)';
-                }
+                e.currentTarget.style.background = T.isLight ? 'rgba(255, 85, 0, 0.12)' : 'rgba(255, 85, 0, 0.25)';
+                e.currentTarget.style.borderColor = 'rgba(255, 85, 0, 0.35)';
               }}
               onMouseLeave={e => {
-                if (!activeCall) {
-                  e.currentTarget.style.background = T.isLight ? '#f5f2eb' : 'rgba(255, 255, 255, 0.06)';
-                  e.currentTarget.style.borderColor = T.isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.1)';
-                }
+                e.currentTarget.style.background = T.isLight ? '#f5f2eb' : 'rgba(255, 255, 255, 0.06)';
+                e.currentTarget.style.borderColor = T.isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.1)';
               }}
             >
               <Video size={16} />

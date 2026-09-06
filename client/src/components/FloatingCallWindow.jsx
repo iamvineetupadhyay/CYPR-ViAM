@@ -19,7 +19,30 @@ export default function FloatingCallWindow({
 }) {
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
+  const remoteBgVideoRef = useRef(null);
   const remoteAudioRef = useRef(null);
+
+  // Dynamic Camera Orientation
+  const [isRemotePortrait, setIsRemotePortrait] = useState(false);
+  const [isLocalPortrait, setIsLocalPortrait] = useState(false);
+
+  const detectRemoteOrientation = () => {
+    if (remoteVideoRef.current) {
+      const { videoWidth, videoHeight } = remoteVideoRef.current;
+      if (videoWidth && videoHeight) {
+        setIsRemotePortrait(videoHeight > videoWidth);
+      }
+    }
+  };
+
+  const detectLocalOrientation = () => {
+    if (localVideoRef.current) {
+      const { videoWidth, videoHeight } = localVideoRef.current;
+      if (videoWidth && videoHeight) {
+        setIsLocalPortrait(videoHeight > videoWidth);
+      }
+    }
+  };
 
   // Draggable position state
   const [pos, setPos] = useState({ x: window.innerWidth - 340, y: window.innerHeight - 240 });
@@ -30,7 +53,9 @@ export default function FloatingCallWindow({
   useEffect(() => {
     if (localVideoRef.current && localStream) {
       localVideoRef.current.srcObject = localStream;
-      localVideoRef.current.play().catch(err => console.warn('[Floating local play error]', err));
+      localVideoRef.current.play()
+        .then(() => detectLocalOrientation())
+        .catch(err => console.warn('[Floating local play error]', err));
     }
   }, [localStream]);
 
@@ -38,7 +63,13 @@ export default function FloatingCallWindow({
   useEffect(() => {
     if (remoteVideoRef.current && remoteStream) {
       remoteVideoRef.current.srcObject = remoteStream;
-      remoteVideoRef.current.play().catch(err => console.warn('[Floating remote play error]', err));
+      remoteVideoRef.current.play()
+        .then(() => detectRemoteOrientation())
+        .catch(err => console.warn('[Floating remote play error]', err));
+    }
+    if (remoteBgVideoRef.current && remoteStream) {
+      remoteBgVideoRef.current.srcObject = remoteStream;
+      remoteBgVideoRef.current.play().catch(err => console.warn('[Floating remote bg play error]', err));
     }
     if (remoteAudioRef.current && remoteStream) {
       remoteAudioRef.current.srcObject = remoteStream;
@@ -95,8 +126,8 @@ export default function FloatingCallWindow({
         position: 'fixed',
         left: `${pos.x}px`,
         top: `${pos.y}px`,
-        width: '300px',
-        height: '190px',
+        width: isRemotePortrait ? '205px' : '300px',
+        height: isRemotePortrait ? '320px' : '190px',
         borderRadius: '20px',
         background: '#141417',
         border: '1.5px solid #27272a',
@@ -107,22 +138,46 @@ export default function FloatingCallWindow({
         flexDirection: 'column',
         userSelect: 'none',
         cursor: isDragging ? 'grabbing' : 'grab',
-        transition: isDragging ? 'none' : 'box-shadow 0.2s, transform 0.2s'
+        transition: isDragging ? 'none' : 'width 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s'
       }}
     >
       {/* Hidden Audio Output */}
       <audio ref={remoteAudioRef} autoPlay playsInline />
 
-      {/* Background Remote Video Feed */}
+      {/* Ambient Blurred Video Background for Portrait Mode */}
+      {hasRemoteVideo && isRemotePortrait && (
+        <video
+          ref={remoteBgVideoRef}
+          autoPlay
+          playsInline
+          muted
+          style={{
+            position: 'absolute',
+            inset: '-20px',
+            width: 'calc(100% + 40px)',
+            height: 'calc(100% + 40px)',
+            objectFit: 'cover',
+            filter: 'blur(30px) brightness(0.35)',
+            zIndex: 1,
+            pointerEvents: 'none'
+          }}
+        />
+      )}
+
+      {/* Primary Remote Video Feed */}
       <video
         ref={remoteVideoRef}
         autoPlay
         playsInline
         muted
+        onLoadedMetadata={detectRemoteOrientation}
+        onResize={detectRemoteOrientation}
+        onTimeUpdate={detectRemoteOrientation}
         style={{
           position: 'absolute', inset: 0,
           width: '100%', height: '100%',
-          objectFit: 'cover', zIndex: 1,
+          objectFit: isRemotePortrait ? 'contain' : 'cover',
+          zIndex: 2,
           display: hasRemoteVideo ? 'block' : 'none'
         }}
       />
@@ -159,14 +214,20 @@ export default function FloatingCallWindow({
       {localStream && (
         <div style={{
           position: 'absolute', top: '8px', right: '8px', zIndex: 10,
-          width: '64px', height: '44px', borderRadius: '10px',
-          overflow: 'hidden', background: '#09090b', border: '1px solid #27272a'
+          width: isLocalPortrait ? '42px' : '64px',
+          height: isLocalPortrait ? '66px' : '44px',
+          borderRadius: '10px',
+          overflow: 'hidden', background: '#09090b', border: '1px solid #27272a',
+          transition: 'width 0.25s ease, height 0.25s ease'
         }}>
           <video
             ref={localVideoRef}
             autoPlay
             playsInline
             muted
+            onLoadedMetadata={detectLocalOrientation}
+            onResize={detectLocalOrientation}
+            onTimeUpdate={detectLocalOrientation}
             style={{
               width: '100%', height: '100%', objectFit: 'cover',
               transform: 'scaleX(-1)', display: !isCamOff ? 'block' : 'none'

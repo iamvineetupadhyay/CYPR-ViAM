@@ -22,6 +22,7 @@ export default function CallPage({
   const T = getT(theme);
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
+  const remoteBgVideoRef = useRef(null);
   const remoteAudioRef = useRef(null);
 
   const [isVideoCall, setIsVideoCall] = useState(initialIsVideo);
@@ -31,6 +32,28 @@ export default function CallPage({
   const [isSpeakerMuted, setIsSpeakerMuted] = useState(false);
   const [qualityMode, setQualityMode] = useState('1080p Ultra HD');
   const [showSettings, setShowSettings] = useState(false);
+
+  // Dynamic Camera Orientation (Portrait vs Landscape)
+  const [isRemotePortrait, setIsRemotePortrait] = useState(false);
+  const [isLocalPortrait, setIsLocalPortrait] = useState(false);
+
+  const detectRemoteOrientation = useCallback(() => {
+    if (remoteVideoRef.current) {
+      const { videoWidth, videoHeight } = remoteVideoRef.current;
+      if (videoWidth && videoHeight) {
+        setIsRemotePortrait(videoHeight > videoWidth);
+      }
+    }
+  }, []);
+
+  const detectLocalOrientation = useCallback(() => {
+    if (localVideoRef.current) {
+      const { videoWidth, videoHeight } = localVideoRef.current;
+      if (videoWidth && videoHeight) {
+        setIsLocalPortrait(videoHeight > videoWidth);
+      }
+    }
+  }, []);
 
   // Use external shared WebRTC instance if provided by App, otherwise fallback
   const internalWebrtc = useWebRTC(socket, roomId, currentUser);
@@ -108,21 +131,29 @@ export default function CallPage({
   useEffect(() => {
     if (localVideoRef.current && localStream) {
       localVideoRef.current.srcObject = localStream;
-      localVideoRef.current.play().catch((err) => console.warn('[CallPage] Local video play error:', err));
+      localVideoRef.current.play()
+        .then(() => detectLocalOrientation())
+        .catch((err) => console.warn('[CallPage] Local video play error:', err));
     }
-  }, [localStream]);
+  }, [localStream, detectLocalOrientation]);
 
   // Attach remote stream to remote video & audio elements
   useEffect(() => {
     if (remoteVideoRef.current && remoteStream) {
       remoteVideoRef.current.srcObject = remoteStream;
-      remoteVideoRef.current.play().catch((err) => console.warn('[CallPage] Remote video play error:', err));
+      remoteVideoRef.current.play()
+        .then(() => detectRemoteOrientation())
+        .catch((err) => console.warn('[CallPage] Remote video play error:', err));
+    }
+    if (remoteBgVideoRef.current && remoteStream) {
+      remoteBgVideoRef.current.srcObject = remoteStream;
+      remoteBgVideoRef.current.play().catch((err) => console.warn('[CallPage] Remote BG video play error:', err));
     }
     if (remoteAudioRef.current && remoteStream) {
       remoteAudioRef.current.srcObject = remoteStream;
       remoteAudioRef.current.play().catch((err) => console.warn('[CallPage] Remote audio play error:', err));
     }
-  }, [remoteStream]);
+  }, [remoteStream, detectRemoteOrientation]);
 
   // Call duration timer
   useEffect(() => {
@@ -300,24 +331,71 @@ export default function CallPage({
 
       {/* ═══════ MAIN STAGE AREA ═══════ */}
       <main style={{ flex: 1, position: 'relative', background: '#000000', overflow: 'hidden' }}>
-        {/* Full Screen Remote Video Feed */}
-        <video
-          ref={remoteVideoRef}
-          autoPlay
-          playsInline
-          muted
-          style={{
-            position: 'absolute', inset: 0,
-            width: '100%', height: '100%',
-            objectFit: 'cover', zIndex: 1,
-            display: hasRemoteVideo ? 'block' : 'none'
-          }}
-        />
+        {/* Hidden Remote Audio Stream */}
+        <audio ref={remoteAudioRef} autoPlay playsInline muted={isSpeakerMuted} />
+
+        {/* Ambient Blurred Video Background for Portrait Feeds (WhatsApp / FaceTime style) */}
+        {hasRemoteVideo && isRemotePortrait && (
+          <video
+            ref={remoteBgVideoRef}
+            autoPlay
+            playsInline
+            muted
+            style={{
+              position: 'absolute',
+              inset: '-40px',
+              width: 'calc(100% + 80px)',
+              height: 'calc(100% + 80px)',
+              objectFit: 'cover',
+              filter: 'blur(45px) brightness(0.35) saturate(1.4)',
+              zIndex: 1,
+              pointerEvents: 'none'
+            }}
+          />
+        )}
+
+        {/* Primary Remote Video Feed: Adaptive Portrait / Landscape Presentation */}
+        {hasRemoteVideo && (
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 2,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: isRemotePortrait ? '24px' : '0',
+            pointerEvents: 'none'
+          }}>
+            <video
+              ref={remoteVideoRef}
+              autoPlay
+              playsInline
+              muted={isSpeakerMuted}
+              onLoadedMetadata={detectRemoteOrientation}
+              onResize={detectRemoteOrientation}
+              onTimeUpdate={detectRemoteOrientation}
+              style={{
+                width: isRemotePortrait ? 'auto' : '100%',
+                height: isRemotePortrait ? '100%' : '100%',
+                maxHeight: '100%',
+                maxWidth: '100%',
+                aspectRatio: isRemotePortrait ? '9 / 16' : 'auto',
+                objectFit: 'contain',
+                borderRadius: isRemotePortrait ? '24px' : '0px',
+                boxShadow: isRemotePortrait ? '0 25px 80px rgba(0, 0, 0, 0.95), 0 0 45px rgba(255, 85, 0, 0.2)' : 'none',
+                border: isRemotePortrait ? '1.5px solid rgba(255, 255, 255, 0.15)' : 'none',
+                pointerEvents: 'auto',
+                background: '#000000',
+                transition: 'all 0.3s ease'
+              }}
+            />
+          </div>
+        )}
 
         {/* Center Card: Displayed during Voice Call or when Remote Video is not available */}
         {!hasRemoteVideo && (
           <div style={{
-            position: 'absolute', inset: 0, zIndex: 2,
+            position: 'absolute', inset: 0, zIndex: 3,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             background: 'radial-gradient(circle at center, #18181b 0%, #09090b 100%)',
             padding: '24px'
@@ -373,19 +451,25 @@ export default function CallPage({
           </div>
         )}
 
-        {/* Local PIP Preview Video (Bottom-Right Floating Box) */}
+        {/* Local PIP Preview Video: Adapts dynamically to portrait (135x220) vs landscape (220x140) */}
         <div style={{
           position: 'absolute', bottom: '110px', right: '32px', zIndex: 10,
-          width: '220px', height: '140px', borderRadius: '20px',
+          width: isLocalPortrait ? '135px' : '220px',
+          height: isLocalPortrait ? '220px' : '140px',
+          borderRadius: '20px',
           overflow: 'hidden', background: '#141417',
           border: '2px solid #27272a',
-          boxShadow: '0 20px 40px rgba(0,0,0,0.9)'
+          boxShadow: '0 20px 40px rgba(0,0,0,0.9)',
+          transition: 'width 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'
         }}>
           <video
             ref={localVideoRef}
             autoPlay
             playsInline
             muted
+            onLoadedMetadata={detectLocalOrientation}
+            onResize={detectLocalOrientation}
+            onTimeUpdate={detectLocalOrientation}
             style={{
               width: '100%', height: '100%', objectFit: 'cover',
               transform: 'scaleX(-1)',
