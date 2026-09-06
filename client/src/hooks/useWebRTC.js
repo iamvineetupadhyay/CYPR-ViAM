@@ -62,42 +62,6 @@ export function useWebRTC(socket, roomId, user) {
   const localStreamRef = useRef(null);
   const targetPeerIdRef = useRef(null);
   const isRestartingIceRef = useRef(false);
-
-  // Initialize Local Media Stream (Camera + Mic) ON DEMAND
-  const initLocalMedia = useCallback(async (isVideo = true, withAudio = true) => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: isVideo ? {
-          width: { ideal: 640 },
-          height: { ideal: 480 },
-          facingMode: 'user'
-        } : false,
-        audio: withAudio ? {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        } : false
-      });
-      localStreamRef.current = stream;
-      setLocalStream(stream);
-      return stream;
-    } catch (err) {
-      console.warn('[WebRTC] Camera/Mic access failed, checking fallback options:', err);
-      if (withAudio) {
-        try {
-          const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-          localStreamRef.current = audioStream;
-          setLocalStream(audioStream);
-          return audioStream;
-        } catch { }
-      }
-      const synthStream = createSyntheticStream();
-      localStreamRef.current = synthStream;
-      setLocalStream(synthStream);
-      return synthStream;
-    }
-  }, []);
-
   const iceQueueRef = useRef([]);
 
   // Helper to ensure local media tracks are added to RTCPeerConnection cleanly without altering m-line order
@@ -124,6 +88,50 @@ export function useWebRTC(socket, roomId, user) {
       });
     }
   }, []);
+
+  // Initialize Local Media Stream (Camera + Mic) ON DEMAND
+  const initLocalMedia = useCallback(async (isVideo = true, withAudio = true) => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: isVideo ? {
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          facingMode: 'user'
+        } : false,
+        audio: withAudio ? {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        } : false
+      });
+      localStreamRef.current = stream;
+      setLocalStream(stream);
+      if (pcRef.current) {
+        attachLocalTracks(pcRef.current);
+      }
+      return stream;
+    } catch (err) {
+      console.warn('[WebRTC] Camera/Mic access failed, checking fallback options:', err);
+      if (withAudio) {
+        try {
+          const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+          localStreamRef.current = audioStream;
+          setLocalStream(audioStream);
+          if (pcRef.current) {
+            attachLocalTracks(pcRef.current);
+          }
+          return audioStream;
+        } catch { }
+      }
+      const synthStream = createSyntheticStream();
+      localStreamRef.current = synthStream;
+      setLocalStream(synthStream);
+      if (pcRef.current) {
+        attachLocalTracks(pcRef.current);
+      }
+      return synthStream;
+    }
+  }, [attachLocalTracks]);
 
   // Process queued ICE candidates
   const processIceQueue = useCallback(async (pc) => {
@@ -186,17 +194,17 @@ export function useWebRTC(socket, roomId, user) {
 
     // Send local E2EE encrypted ICE candidates to target peer via signaling socket
     pc.onicecandidate = async (event) => {
-      if (event.candidate && socket && targetSocketId) {
-        try {
-          const candidateData = event.candidate.toJSON ? event.candidate.toJSON() : event.candidate;
-          const encryptedCandidate = await encryptPayload(candidateData, roomId);
-          socket.emit('webrtc-ice-candidate', {
-            targetSocketId,
-            candidate: encryptedCandidate
-          });
-        } catch (err) {
-          console.warn('[WebRTC] Failed to send ICE candidate:', err);
-        }
+      if (!event.candidate || !socket) return;
+      const targetId = targetPeerIdRef.current || targetSocketId;
+      try {
+        const candidateData = event.candidate.toJSON ? event.candidate.toJSON() : event.candidate;
+        const encryptedCandidate = await encryptPayload(candidateData, roomId);
+        socket.emit('webrtc-ice-candidate', {
+          targetSocketId: targetId || null,
+          candidate: encryptedCandidate
+        });
+      } catch (err) {
+        console.warn('[WebRTC] Failed to send ICE candidate:', err);
       }
     };
 

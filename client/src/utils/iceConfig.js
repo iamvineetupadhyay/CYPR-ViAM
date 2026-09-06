@@ -1,3 +1,5 @@
+import { SERVER_URL } from './apiUrl';
+
 /**
  * Global High-Availability STUN & TURN Server Configuration
  * Enables WebRTC Audio & Video Calls across 2 different IP addresses,
@@ -25,43 +27,49 @@ export const STUN_SERVERS = [
   { urls: 'stun:stun.nextcloud.com:443' }
 ];
 
-export const TURN_RELAY_SERVERS = [
-  // OpenRelay by Metered (High-performance free global TURN network)
-  // 1. Standard UDP Port 80 TURN (Bypasses firewalls blocking ports > 1024)
-  {
-    urls: 'turn:relay.metered.ca:80',
-    username: 'openrelayproject',
-    credential: 'openrelayproject'
-  },
-  // 2. Standard UDP Port 443 TURN
-  {
-    urls: 'turn:relay.metered.ca:443',
-    username: 'openrelayproject',
-    credential: 'openrelayproject'
-  },
-  // 3. TCP Port 443 TURN (Crucial for networks/ISPs dropping UDP packets)
-  {
-    urls: 'turn:relay.metered.ca:443?transport=tcp',
-    username: 'openrelayproject',
-    credential: 'openrelayproject'
-  },
-  // 4. Encrypted TLS TURNS Port 443 (Indistinguishable from HTTPS, passes strict corporate/campus firewalls)
-  {
-    urls: 'turns:relay.metered.ca:443?transport=tcp',
-    username: 'openrelayproject',
-    credential: 'openrelayproject'
+let cachedDynamicIceServers = null;
+
+/**
+ * Loads dynamic verified ICE servers (including Metered TURN or custom TURN relays) from the backend
+ */
+export async function loadIceServersFromServer() {
+  if (cachedDynamicIceServers && cachedDynamicIceServers.length > 0) {
+    return cachedDynamicIceServers;
   }
-];
+
+  try {
+    const res = await fetch(`${SERVER_URL}/api/webrtc/ice-servers`, {
+      signal: AbortSignal.timeout(3000)
+    });
+    const data = await res.json();
+    if (data && Array.isArray(data.iceServers) && data.iceServers.length > 0) {
+      cachedDynamicIceServers = data.iceServers;
+      console.log(`📡 [WebRTC Config] Loaded ${data.iceServers.length} ICE servers from backend (${data.source})`);
+      return cachedDynamicIceServers;
+    }
+  } catch (err) {
+    console.warn('[WebRTC Config] Server ICE fetch fallback to default STUN:', err?.message || err);
+  }
+
+  return STUN_SERVERS;
+}
+
+// Prefetch on module import
+if (typeof window !== 'undefined') {
+  loadIceServersFromServer().catch(() => {});
+}
 
 export function getWebRTCConfiguration(customServers = null) {
   const iceServers = [];
 
-  // 1. Custom TURN/STUN credentials (e.g. from environment or server)
+  // 1. Custom TURN/STUN credentials passed explicitly or fetched from backend
   if (customServers && Array.isArray(customServers) && customServers.length > 0) {
     iceServers.push(...customServers);
+  } else if (cachedDynamicIceServers && cachedDynamicIceServers.length > 0) {
+    iceServers.push(...cachedDynamicIceServers);
   }
 
-  // Check Vite client environment variables
+  // 2. Check Vite client environment variables
   const envTurnUrl = typeof import.meta !== 'undefined' && import.meta.env?.VITE_TURN_URL;
   const envTurnUser = typeof import.meta !== 'undefined' && import.meta.env?.VITE_TURN_USERNAME;
   const envTurnPass = typeof import.meta !== 'undefined' && import.meta.env?.VITE_TURN_CREDENTIAL;
@@ -74,9 +82,10 @@ export function getWebRTCConfiguration(customServers = null) {
     });
   }
 
-  // 2. Default STUN and TURN Relays
-  iceServers.push(...STUN_SERVERS);
-  iceServers.push(...TURN_RELAY_SERVERS);
+  // 3. Fallback to Verified Global Anycast STUN Servers
+  if (iceServers.length === 0) {
+    iceServers.push(...STUN_SERVERS);
+  }
 
   return {
     iceServers,

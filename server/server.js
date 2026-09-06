@@ -58,6 +58,75 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Dynamic WebRTC ICE / STUN / TURN Server Relay Endpoint
+let cachedMeteredIce = null;
+let lastMeteredFetch = 0;
+
+app.get('/api/webrtc/ice-servers', async (req, res) => {
+  try {
+    const meteredApiKey = process.env.METERED_API_KEY;
+    const meteredAppName = process.env.METERED_APP_NAME;
+
+    // 1. Dynamic Metered TURN Relay (If configured in server/.env)
+    if (meteredApiKey && meteredAppName) {
+      const now = Date.now();
+      if (cachedMeteredIce && (now - lastMeteredFetch < 15 * 60 * 1000)) {
+        return res.json({ iceServers: cachedMeteredIce, source: 'metered-cached' });
+      }
+
+      try {
+        const meteredRes = await fetch(`https://${meteredAppName}.metered.live/api/v1/turn/credentials?apiKey=${meteredApiKey}`, {
+          signal: AbortSignal.timeout(3500)
+        });
+        const data = await meteredRes.json();
+        if (Array.isArray(data) && data.length > 0) {
+          cachedMeteredIce = data;
+          lastMeteredFetch = now;
+          console.log(`📡 [WebRTC TURN] Successfully loaded ${data.length} dynamic TURN relay servers from Metered (${meteredAppName})`);
+          return res.json({ iceServers: data, source: 'metered' });
+        }
+      } catch (err) {
+        console.warn('⚠️ [WebRTC TURN] Metered fetch note:', err.message);
+      }
+    }
+
+    // 2. Custom TURN Relay from ENV
+    const customTurnUrl = process.env.TURN_URL;
+    const customTurnUser = process.env.TURN_USERNAME;
+    const customTurnPass = process.env.TURN_CREDENTIAL;
+    const customServers = [];
+
+    if (customTurnUrl && customTurnUser && customTurnPass) {
+      customServers.push({
+        urls: customTurnUrl.includes(',') ? customTurnUrl.split(',').map(u => u.trim()) : customTurnUrl.trim(),
+        username: customTurnUser.trim(),
+        credential: customTurnPass.trim()
+      });
+    }
+
+    // 3. Fallback to Global Anycast STUN servers
+    const defaultStun = [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'stun:stun3.l.google.com:19302' },
+      { urls: 'stun:stun4.l.google.com:19302' },
+      { urls: 'stun:stun.cloudflare.com:3478' },
+      { urls: 'stun:global.stun.twilio.com:3478' },
+      { urls: 'stun:stun.services.mozilla.com' },
+      { urls: 'stun:stun.nextcloud.com:443' }
+    ];
+
+    res.json({
+      iceServers: [...customServers, ...defaultStun],
+      source: customServers.length > 0 ? 'custom-turn' : 'stun-default'
+    });
+  } catch (err) {
+    console.error('❌ [WebRTC ICE Error]', err);
+    res.status(500).json({ error: 'Failed to retrieve ICE servers' });
+  }
+});
+
 // Serve frontend build static files in Production / Docker container
 const fs = require('fs');
 
