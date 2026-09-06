@@ -66,8 +66,15 @@ export default function CinemaPage({
   const {
     localStream, remoteStream,
     isMicMuted, isCamOff, isCallConnected, peerName,
-    startLocalCall, stopLocalMedia, toggleMic, toggleCam
+    startLocalCall, createOfferAndSend, stopLocalMedia, toggleMic, toggleCam
   } = useWebRTC(socket, roomId, currentUser);
+
+  // Request initial room media state on join/mount
+  useEffect(() => {
+    if (socket) {
+      socket.emit('media-sync-request');
+    }
+  }, [socket]);
 
   // Sync E2EE encrypted media state and chat messages from socket
   useEffect(() => {
@@ -84,7 +91,10 @@ export default function CinemaPage({
     socket.on('initial-media-state', async (data) => {
       if (data) {
         const decrypted = await decryptPayload(data, roomId);
-        if (decrypted) setMediaState(decrypted);
+        if (decrypted) {
+          setMediaState(decrypted);
+          onMediaChange?.(decrypted);
+        }
       }
     });
 
@@ -159,19 +169,24 @@ export default function CinemaPage({
       }));
     });
 
-    // Face-to-Face Video & Mic Socket Listeners
+    // Face-to-Face Video Socket Listeners (Strictly Video Only — No Audio)
     socket.on('cinema-cam-request', (data) => {
       setIncomingCamRequest(data);
     });
 
-    socket.on('cinema-cam-accepted', async () => {
+    socket.on('cinema-cam-accepted', async (data) => {
       setCamRequestSent(false);
-      await startLocalCall(true);
+      // Video ONLY, no audio!
+      await startLocalCall(true, false);
+      const targetId = data?.senderSocketId;
+      if (targetId && createOfferAndSend) {
+        createOfferAndSend(targetId);
+      }
     });
 
     socket.on('cinema-cam-declined', (data) => {
       setCamRequestSent(false);
-      alert(`⚠️ ${data.from?.name || 'Partner'} declined the camera & mic request.`);
+      alert(`⚠️ ${data.from?.name || 'Partner'} declined the Face Cam request.`);
     });
 
     socket.on('cinema-cam-stopped', () => {
@@ -191,7 +206,7 @@ export default function CinemaPage({
       socket.off('cinema-cam-declined');
       socket.off('cinema-cam-stopped');
     };
-  }, [socket, roomId, onMediaChange, startLocalCall, stopLocalMedia]);
+  }, [socket, roomId, onMediaChange, startLocalCall, createOfferAndSend, stopLocalMedia]);
 
   const handleSelectMedia = async (newMedia) => {
     const updated = { ...mediaState, ...newMedia, currentTime: 0, isPlaying: true };
@@ -211,20 +226,31 @@ export default function CinemaPage({
     socket?.emit('chat-message', payload);
   };
 
-  // Face-to-Face Cam Handlers
+  // Face-to-Face Cam Handlers (Strictly Video Only — No Audio)
   const handleRequestFaceCam = async () => {
     if (!socket) return;
     socket.emit('cinema-cam-request', { from: currentUser, isVideo: true, roomId });
     setCamRequestSent(true);
-    await startLocalCall(true);
+    // Video ONLY, no audio!
+    await startLocalCall(true, false);
     setTimeout(() => setCamRequestSent(false), 12000);
   };
 
   const handleAcceptFaceCam = async () => {
     if (incomingCamRequest) {
+      const requesterSocketId = incomingCamRequest.senderSocketId;
       setIncomingCamRequest(null);
-      await startLocalCall(true);
-      socket?.emit('cinema-cam-accepted', { from: currentUser, roomId });
+      // Video ONLY, no audio!
+      await startLocalCall(true, false);
+      socket?.emit('cinema-cam-accepted', {
+        from: currentUser,
+        roomId,
+        targetSocketId: requesterSocketId,
+        senderSocketId: socket?.id
+      });
+      if (requesterSocketId && createOfferAndSend) {
+        createOfferAndSend(requesterSocketId);
+      }
     }
   };
 
@@ -482,13 +508,12 @@ export default function CinemaPage({
                 layoutMode="floating"
                 localStream={localStream}
                 remoteStream={remoteStream}
-                isMicMuted={isMicMuted}
                 isCamOff={isCamOff}
-                toggleMic={toggleMic}
                 toggleCam={toggleCam}
                 isCallConnected={isCallConnected}
                 peerName={peerName}
                 currentUser={currentUser}
+                audioEnabled={false}
               />
             )}
           </CinemaPlayer>
@@ -589,7 +614,7 @@ export default function CinemaPage({
                     {incomingCamRequest.from?.name || 'Partner'}
                   </div>
                   <div style={{ fontSize: '12px', color: '#a1a1aa' }}>
-                    is requesting to turn on Face-to-Face Video & Mic!
+                    is requesting to turn on Face Cam (Silent Video Overlay)!
                   </div>
                 </div>
               </div>
@@ -686,7 +711,7 @@ export default function CinemaPage({
                       color: '#ff7733', fontSize: '11px', fontWeight: '800',
                       cursor: 'pointer', transition: 'all 0.15s ease'
                     }}
-                    title="Request partner to turn on Face-to-Face Video & Mic"
+                    title="Request partner to turn on Face Cam (Video Only)"
                     onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 85, 0, 0.35)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 85, 0, 0.2)'}
                   >
@@ -694,21 +719,7 @@ export default function CinemaPage({
                     <span>Face Cam</span>
                   </button>
                 ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <button
-                      onClick={toggleMic}
-                      style={{
-                        width: '26px', height: '26px', borderRadius: '50%',
-                        background: isMicMuted ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.2)',
-                        border: isMicMuted ? '1px solid #ef4444' : '1px solid #22c55e',
-                        color: isMicMuted ? '#ef4444' : '#22c55e',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
-                      }}
-                      title={isMicMuted ? 'Unmute Mic' : 'Mute Mic'}
-                    >
-                      {isMicMuted ? <MicOff size={12} /> : <Mic size={12} />}
-                    </button>
-
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <button
                       onClick={toggleCam}
                       style={{
@@ -730,7 +741,7 @@ export default function CinemaPage({
                         background: 'rgba(239, 68, 68, 0.2)', border: '1px solid #ef4444',
                         color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
                       }}
-                      title="Stop Face-to-Face Cam"
+                      title="Stop Face Cam"
                     >
                       <PhoneOff size={12} />
                     </button>
@@ -759,13 +770,12 @@ export default function CinemaPage({
                 layoutMode="sidebar"
                 localStream={localStream}
                 remoteStream={remoteStream}
-                isMicMuted={isMicMuted}
                 isCamOff={isCamOff}
-                toggleMic={toggleMic}
                 toggleCam={toggleCam}
                 isCallConnected={isCallConnected}
                 peerName={peerName}
                 currentUser={currentUser}
+                audioEnabled={false}
               />
             )}
 

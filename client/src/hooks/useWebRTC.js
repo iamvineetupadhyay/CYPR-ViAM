@@ -64,7 +64,7 @@ export function useWebRTC(socket, roomId, user) {
   const isRestartingIceRef = useRef(false);
 
   // Initialize Local Media Stream (Camera + Mic) ON DEMAND
-  const initLocalMedia = useCallback(async (isVideo = true) => {
+  const initLocalMedia = useCallback(async (isVideo = true, withAudio = true) => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: isVideo ? {
@@ -72,29 +72,29 @@ export function useWebRTC(socket, roomId, user) {
           height: { ideal: 480 },
           facingMode: 'user'
         } : false,
-        audio: {
+        audio: withAudio ? {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true
-        }
+        } : false
       });
       localStreamRef.current = stream;
       setLocalStream(stream);
       return stream;
     } catch (err) {
-      console.warn('[WebRTC] Camera/Mic access failed, using synthetic media stream fallback:', err);
-      try {
-        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        localStreamRef.current = audioStream;
-        setLocalStream(audioStream);
-        return audioStream;
-      } catch (audioErr) {
-        console.warn('[WebRTC] Audio access failed, using animated canvas fallback stream');
-        const synthStream = createSyntheticStream();
-        localStreamRef.current = synthStream;
-        setLocalStream(synthStream);
-        return synthStream;
+      console.warn('[WebRTC] Camera/Mic access failed, checking fallback options:', err);
+      if (withAudio) {
+        try {
+          const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+          localStreamRef.current = audioStream;
+          setLocalStream(audioStream);
+          return audioStream;
+        } catch { }
       }
+      const synthStream = createSyntheticStream();
+      localStreamRef.current = synthStream;
+      setLocalStream(synthStream);
+      return synthStream;
     }
   }, []);
 
@@ -387,8 +387,8 @@ export function useWebRTC(socket, roomId, user) {
   }, [socket, createPeerConnection, createOfferAndSend, attachLocalTracks, processIceQueue, stopLocalMedia, roomId]);
 
   // Start Call (Trigger Camera / Mic On Demand)
-  const startLocalCall = useCallback(async (isVideo = true) => {
-    const stream = await initLocalMedia(isVideo);
+  const startLocalCall = useCallback(async (isVideo = true, withAudio = true) => {
+    const stream = await initLocalMedia(isVideo, withAudio);
     if (stream && socket) {
       socket.emit('peer-ready', { roomId, user });
     }

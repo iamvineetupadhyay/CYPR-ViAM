@@ -106,6 +106,22 @@ export default function CinemaPlayer({
   const [selectedQuality, setSelectedQuality] = useState('Auto');
   const [availableQualities, setAvailableQualities] = useState(['Auto', '1080p', '720p', '480p']);
 
+  // Sync incoming mediaState prop changes from room
+  useEffect(() => {
+    if (!mediaState) return;
+    if (mediaState.isPlaying !== undefined) {
+      setIsPlaying(mediaState.isPlaying);
+    }
+    if (typeof mediaState.currentTime === 'number' && !isInternalUpdateRef.current) {
+      setCurrentTime(mediaState.currentTime);
+      if (videoRef.current && Math.abs((videoRef.current.currentTime || 0) - mediaState.currentTime) > 1.5) {
+        videoRef.current.currentTime = mediaState.currentTime;
+      } else if (ytPlayerRef.current?.seekTo && Math.abs((ytPlayerRef.current.getCurrentTime() || 0) - mediaState.currentTime) > 1.5) {
+        ytPlayerRef.current.seekTo(mediaState.currentTime, true);
+      }
+    }
+  }, [mediaState?.url, mediaState?.isPlaying, mediaState?.currentTime]);
+
   // Real-time smooth timer loop for YouTube and Video time sync on custom scrubber
   useEffect(() => {
     if (!isPlaying) return;
@@ -469,12 +485,12 @@ export default function CinemaPlayer({
 
               if (event.data === 1) {
                 setIsPlaying(true);
-                const t = event.target.getCurrentTime();
-                emitEncryptedSync('media-play', { currentTime: t });
+                const t = event.target.getCurrentTime() || 0;
+                socket?.emit('media-play', { currentTime: t });
               } else if (event.data === 2) {
                 setIsPlaying(false);
-                const t = event.target.getCurrentTime();
-                emitEncryptedSync('media-pause', { currentTime: t });
+                const t = event.target.getCurrentTime() || 0;
+                socket?.emit('media-pause', { currentTime: t });
               }
             }
           }
@@ -520,13 +536,18 @@ export default function CinemaPlayer({
     const handlePlay = () => {
       if (isInternalUpdateRef.current) return;
       setIsPlaying(true);
-      emitEncryptedSync('media-play', { currentTime: video.currentTime });
+      socket?.emit('media-play', { currentTime: video.currentTime || 0 });
     };
 
     const handlePause = () => {
       if (isInternalUpdateRef.current) return;
       setIsPlaying(false);
-      emitEncryptedSync('media-pause', { currentTime: video.currentTime });
+      socket?.emit('media-pause', { currentTime: video.currentTime || 0 });
+    };
+
+    const handleSeeked = () => {
+      if (isInternalUpdateRef.current) return;
+      socket?.emit('media-seek', { currentTime: video.currentTime || 0 });
     };
 
     const handleTimeUpdate = () => {
@@ -536,26 +557,27 @@ export default function CinemaPlayer({
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
     video.addEventListener('play', handlePlay);
     video.addEventListener('pause', handlePause);
+    video.addEventListener('seeked', handleSeeked);
     video.addEventListener('timeupdate', handleTimeUpdate);
 
     return () => {
       video.removeEventListener('loadedmetadata', handleLoadedMetadata);
       video.removeEventListener('play', handlePlay);
       video.removeEventListener('pause', handlePause);
+      video.removeEventListener('seeked', handleSeeked);
       video.removeEventListener('timeupdate', handleTimeUpdate);
     };
-  }, [mediaState.sourceType, socket, mediaState.currentTime, mediaState.isPlaying, roomId]);
+  }, [mediaState.sourceType, socket, mediaState.currentTime, mediaState.isPlaying]);
 
-  // --- Incoming E2EE Encrypted Sync Events from Peer via Socket ---
+  // --- Incoming Sync Events from Peer via Socket ---
   useEffect(() => {
     if (!socket) return;
 
-    const onMediaPlayed = async (data) => {
-      const decrypted = (await decryptPayload(data, roomId)) || data;
-      const t = decrypted?.currentTime || 0;
-
+    const onMediaPlayed = (data) => {
+      const t = typeof data?.currentTime === 'number' ? data.currentTime : 0;
       isInternalUpdateRef.current = true;
       setIsPlaying(true);
+      setCurrentTime(t);
 
       if (mediaState.sourceType === 'youtube' && ytPlayerRef.current?.seekTo) {
         ytPlayerRef.current.seekTo(t, true);
@@ -567,30 +589,30 @@ export default function CinemaPlayer({
 
       setTimeout(() => {
         isInternalUpdateRef.current = false;
-      }, 300);
+      }, 400);
     };
 
-    const onMediaPaused = async (data) => {
-      const decrypted = (await decryptPayload(data, roomId)) || data;
-
+    const onMediaPaused = (data) => {
+      const t = typeof data?.currentTime === 'number' ? data.currentTime : undefined;
       isInternalUpdateRef.current = true;
       setIsPlaying(false);
+      if (t !== undefined) setCurrentTime(t);
 
       if (mediaState.sourceType === 'youtube' && ytPlayerRef.current?.pauseVideo) {
+        if (t !== undefined) ytPlayerRef.current.seekTo(t, true);
         ytPlayerRef.current.pauseVideo();
       } else if (videoRef.current) {
+        if (t !== undefined) videoRef.current.currentTime = t;
         videoRef.current.pause();
       }
 
       setTimeout(() => {
         isInternalUpdateRef.current = false;
-      }, 300);
+      }, 400);
     };
 
-    const onMediaSeeked = async (data) => {
-      const decrypted = (await decryptPayload(data, roomId)) || data;
-      const t = decrypted?.currentTime || 0;
-
+    const onMediaSeeked = (data) => {
+      const t = typeof data?.currentTime === 'number' ? data.currentTime : 0;
       isInternalUpdateRef.current = true;
       setCurrentTime(t);
 
@@ -602,19 +624,61 @@ export default function CinemaPlayer({
 
       setTimeout(() => {
         isInternalUpdateRef.current = false;
-      }, 300);
+      }, 400);
+    };
+
+    const onMediaHeartbeat = (data) => {
+      if (isInternalUpdateRef.current) return;
+      const t = typeof data?.currentTime === 'number' ? data.currentTime : 0;
+      let localT = 0;
+      if (mediaState.sourceType === 'youtube' && ytPlayerRef.current?.getCurrentTime) {
+        localT = ytPlayerRef.current.getCurrentTime() || 0;
+      } else if (videoRef.current) {
+        localT = videoRef.current.currentTime || 0;
+      }
+
+      if (Math.abs(localT - t) > 2.0) {
+        console.log('[Cinema Sync Heartbeat] Resyncing drift:', localT, '->', t);
+        isInternalUpdateRef.current = true;
+        setCurrentTime(t);
+        if (mediaState.sourceType === 'youtube' && ytPlayerRef.current?.seekTo) {
+          ytPlayerRef.current.seekTo(t, true);
+        } else if (videoRef.current) {
+          videoRef.current.currentTime = t;
+        }
+        setTimeout(() => { isInternalUpdateRef.current = false; }, 400);
+      }
     };
 
     socket.on('media-played', onMediaPlayed);
     socket.on('media-paused', onMediaPaused);
     socket.on('media-seeked', onMediaSeeked);
+    socket.on('media-heartbeat', onMediaHeartbeat);
 
     return () => {
       socket.off('media-played', onMediaPlayed);
       socket.off('media-paused', onMediaPaused);
       socket.off('media-seeked', onMediaSeeked);
+      socket.off('media-heartbeat', onMediaHeartbeat);
     };
-  }, [socket, mediaState.sourceType, roomId]);
+  }, [socket, mediaState.sourceType]);
+
+  // Periodic heartbeat from active player to keep both sides locked in 0ms drift
+  useEffect(() => {
+    if (!isPlaying || !socket) return;
+    const heartbeatInterval = setInterval(() => {
+      let t = 0;
+      if (mediaState.sourceType === 'youtube' && ytPlayerRef.current?.getCurrentTime) {
+        t = ytPlayerRef.current.getCurrentTime() || 0;
+      } else if (videoRef.current) {
+        t = videoRef.current.currentTime || 0;
+      }
+      if (t > 0) {
+        socket.emit('media-heartbeat', { currentTime: t, isPlaying: true });
+      }
+    }, 4000);
+    return () => clearInterval(heartbeatInterval);
+  }, [isPlaying, mediaState.sourceType, socket]);
 
   // User Play/Pause Controls
   const togglePlay = () => {

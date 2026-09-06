@@ -11,7 +11,8 @@ export default function VideoCall({
   isCallConnected,
   peerName,
   currentUser,
-  layoutMode = 'floating' // 'floating' | 'sidebar'
+  layoutMode = 'floating', // 'floating' | 'sidebar'
+  audioEnabled = false // Default video-only (no audio transmitted or played) for cinema facecam
 }) {
   const [position, setPosition] = useState('bottom-right'); // 'bottom-right' | 'top-right' | 'bottom-left'
   const [isMinimized, setIsMinimized] = useState(false);
@@ -71,7 +72,7 @@ export default function VideoCall({
             }}
           >
             {remoteStream && !isCamOff ? (
-              <video ref={remoteVideoRef} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <video ref={remoteVideoRef} autoPlay playsInline muted={!audioEnabled} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', height: '100%', alignItems: 'center', justifyContent: 'center', gap: '6px', background: 'linear-gradient(135deg, rgba(255,85,0,0.08), rgba(20,16,14,0.96))' }}>
                 <User size={28} color="#ff5500" />
@@ -110,27 +111,29 @@ export default function VideoCall({
               You
             </div>
 
-            {/* Quick Mic & Cam Controls on Local Card */}
+            {/* Quick Cam Controls on Local Card */}
             <div style={{ position: 'absolute', top: '6px', right: '6px', display: 'flex', gap: '4px', zIndex: 10 }}>
-              <button
-                type="button"
-                onClick={toggleMic}
-                style={{
-                  width: '24px',
-                  height: '24px',
-                  borderRadius: '50%',
-                  background: isMicMuted ? '#ef4444' : 'rgba(0, 0, 0, 0.75)',
-                  border: isMicMuted ? '1px solid #ef4444' : '1px solid rgba(255, 85, 0, 0.5)',
-                  color: '#fff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer'
-                }}
-                title={isMicMuted ? 'Unmute Mic' : 'Mute Mic'}
-              >
-                {isMicMuted ? <MicOff size={11} color="#fff" /> : <Mic size={11} color="#ff7733" />}
-              </button>
+              {audioEnabled && toggleMic && (
+                <button
+                  type="button"
+                  onClick={toggleMic}
+                  style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    background: isMicMuted ? '#ef4444' : 'rgba(0, 0, 0, 0.75)',
+                    border: isMicMuted ? '1px solid #ef4444' : '1px solid rgba(255, 85, 0, 0.5)',
+                    color: '#fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer'
+                  }}
+                  title={isMicMuted ? 'Unmute Mic' : 'Mute Mic'}
+                >
+                  {isMicMuted ? <MicOff size={11} color="#fff" /> : <Mic size={11} color="#ff7733" />}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={toggleCam}
@@ -241,7 +244,7 @@ export default function VideoCall({
         title={isCallConnected ? `Partner: ${peerName}` : 'Waiting for partner...'}
       >
         {remoteStream && !isCamOff ? (
-          <video ref={remoteVideoRef} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <video ref={remoteVideoRef} autoPlay playsInline muted={!audioEnabled} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
           <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, rgba(255,85,0,0.15), rgba(20,16,14,0.95))' }}>
             <User size={20} color="#ff5500" />
