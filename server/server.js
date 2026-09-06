@@ -68,25 +68,43 @@ app.get('/api/webrtc/ice-servers', async (req, res) => {
     const meteredAppName = process.env.METERED_APP_NAME;
 
     // 1. Dynamic Metered TURN Relay (If configured in server/.env)
-    if (meteredApiKey && meteredAppName) {
+    if (meteredAppName && (meteredApiKey || process.env.METERED_SECRET_KEY)) {
       const now = Date.now();
       if (cachedMeteredIce && (now - lastMeteredFetch < 15 * 60 * 1000)) {
         return res.json({ iceServers: cachedMeteredIce, source: 'metered-cached' });
       }
 
-      try {
-        const meteredRes = await fetch(`https://${meteredAppName}.metered.live/api/v1/turn/credentials?apiKey=${meteredApiKey}`, {
-          signal: AbortSignal.timeout(3500)
-        });
-        const data = await meteredRes.json();
-        if (Array.isArray(data) && data.length > 0) {
-          cachedMeteredIce = data;
-          lastMeteredFetch = now;
-          console.log(`📡 [WebRTC TURN] Successfully loaded ${data.length} dynamic TURN relay servers from Metered (${meteredAppName})`);
-          return res.json({ iceServers: data, source: 'metered' });
+      let activeApiKey = meteredApiKey;
+      if (!activeApiKey && process.env.METERED_SECRET_KEY) {
+        try {
+          const createRes = await fetch(`https://${meteredAppName}.metered.live/api/v1/turn/credential?secretKey=${process.env.METERED_SECRET_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ label: 'cypr-viam-client' }),
+            signal: AbortSignal.timeout(3500)
+          });
+          const cred = await createRes.json();
+          if (cred && cred.apiKey) {
+            activeApiKey = cred.apiKey;
+          }
+        } catch (e) {}
+      }
+
+      if (activeApiKey) {
+        try {
+          const meteredRes = await fetch(`https://${meteredAppName}.metered.live/api/v1/turn/credentials?apiKey=${activeApiKey}`, {
+            signal: AbortSignal.timeout(3500)
+          });
+          const data = await meteredRes.json();
+          if (Array.isArray(data) && data.length > 0) {
+            cachedMeteredIce = data;
+            lastMeteredFetch = now;
+            console.log(`📡 [WebRTC TURN] Successfully loaded ${data.length} dynamic TURN relay servers from Metered (${meteredAppName})`);
+            return res.json({ iceServers: data, source: 'metered' });
+          }
+        } catch (err) {
+          console.warn('⚠️ [WebRTC TURN] Metered fetch note:', err.message);
         }
-      } catch (err) {
-        console.warn('⚠️ [WebRTC TURN] Metered fetch note:', err.message);
       }
     }
 
