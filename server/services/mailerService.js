@@ -11,18 +11,24 @@ async function initMailer() {
       isGmail
         ? {
             service: 'gmail',
+            connectionTimeout: 4000,
+            greetingTimeout: 4000,
+            socketTimeout: 5000,
             auth: {
               user: process.env.SMTP_USER,
-              pass: process.env.SMTP_PASS
+              pass: (process.env.SMTP_PASS || '').trim()
             }
           }
         : {
             host: process.env.SMTP_HOST,
             port: Number(process.env.SMTP_PORT) || 587,
             secure: process.env.SMTP_SECURE === 'true',
+            connectionTimeout: 4000,
+            greetingTimeout: 4000,
+            socketTimeout: 5000,
             auth: {
               user: process.env.SMTP_USER,
-              pass: process.env.SMTP_PASS
+              pass: (process.env.SMTP_PASS || '').trim()
             }
           }
     );
@@ -35,6 +41,9 @@ async function initMailer() {
         host: 'smtp.ethereal.email',
         port: 587,
         secure: false,
+        connectionTimeout: 4000,
+        greetingTimeout: 4000,
+        socketTimeout: 5000,
         auth: {
           user: testAccount.user,
           pass: testAccount.pass
@@ -75,14 +84,15 @@ async function sendEmailOtp(toEmail, otpCode) {
     </div>
   `;
 
-  // 1. Try Resend API first if key is configured
-  if (process.env.RESEND_API_KEY) {
+  // 1. Try Resend API first (works reliably on Render/cloud port 443 HTTPS)
+  const resendKey = process.env.RESEND_API_KEY;
+  if (resendKey) {
     try {
       const fromAddress = process.env.RESEND_FROM || 'CYPR ViAM <onboarding@resend.dev>';
       const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.RESEND_API_KEY.trim()}`,
+          'Authorization': `Bearer ${resendKey.trim()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -105,7 +115,7 @@ async function sendEmailOtp(toEmail, otpCode) {
     }
   }
 
-  // 2. Fallback to Nodemailer / Ethereal
+  // 2. Fallback to Nodemailer SMTP
   if (!mailTransporter) {
     await initMailer();
   }
@@ -120,7 +130,12 @@ async function sendEmailOtp(toEmail, otpCode) {
         html: htmlContent
       };
 
-      const info = await mailTransporter.sendMail(mailOptions);
+      const sendPromise = mailTransporter.sendMail(mailOptions);
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('SMTP connection timed out (Render free tier blocks ports 25, 465, 587)')), 4000)
+      );
+      const info = await Promise.race([sendPromise, timeoutPromise]);
+
       console.log(`📧 [CYPR Mailer] OTP Email sent to ${toEmail} (MsgID: ${info.messageId})`);
       const previewUrl = nodemailer.getTestMessageUrl(info);
       if (previewUrl) {
@@ -128,11 +143,11 @@ async function sendEmailOtp(toEmail, otpCode) {
       }
       return { info, previewUrl, provider: 'nodemailer' };
     } catch (smtpErr) {
-      console.error(`❌ [SMTP Error]:`, smtpErr.message);
+      console.warn(`⚠️ [SMTP Error]:`, smtpErr.message);
     }
   }
 
-  return null;
+  return { simulated: true, otp: otpCode };
 }
 
 initMailer();

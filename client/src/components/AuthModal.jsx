@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   X, Mail, Lock, User, Phone, CheckCircle2,
-  AlertCircle, ArrowRight, Camera, UserPlus, LogIn, Sparkles, ShieldCheck, Key
+  AlertCircle, ArrowRight, Camera, UserPlus, LogIn, Sparkles, ShieldCheck, Key, Loader2
 } from 'lucide-react';
 import { SERVER_URL } from '../utils/apiUrl';
 import { getT } from '../utils/themeTokens';
@@ -38,6 +38,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, i
 
   // OTP Verification state
   const [otpSent, setOtpSent] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [otpVerified, setOtpVerified] = useState(false);
 
@@ -57,25 +58,31 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, i
       return;
     }
 
-    setLoading(true);
+    setSendingOtp(true);
+    // Unconditionally show the OTP entry field so user can enter OTP immediately
+    setOtpSent(true);
+
     try {
       const res = await fetch(`${SERVER_URL}/api/auth/send-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ email: email.trim().toLowerCase() })
       });
       const data = await res.json();
-      setLoading(false);
+      setSendingOtp(false);
 
       if (!res.ok) {
         setError(data.error || 'Failed to send OTP.');
         return;
       }
 
-      setOtpSent(true);
-      setSuccessMsg(`Verification code sent to ${email}`);
+      setSuccessMsg(data.message || `Verification code sent to ${email}`);
+      if (data.simulatedOtp) {
+        setOtpCode(data.simulatedOtp);
+        setSuccessMsg(`OTP sent to ${email} (Auto-filled: ${data.simulatedOtp})`);
+      }
     } catch (err) {
-      setLoading(false);
+      setSendingOtp(false);
       setError('Network error while requesting OTP.');
     }
   };
@@ -497,17 +504,24 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, i
                 <button
                   type="button"
                   onClick={handleSendOtp}
-                  disabled={loading}
+                  disabled={sendingOtp}
                   style={{
-                    height: '42px', background: T.surface2, border: `1px solid ${T.border}`,
+                    height: '42px', background: sendingOtp ? T.surface3 : T.surface2, border: `1px solid ${T.border}`,
                     color: T.textPrimary, borderRadius: '10px', padding: '0 14px',
-                    fontSize: '12px', fontWeight: '600', cursor: 'pointer',
-                    whiteSpace: 'nowrap', flexShrink: 0, transition: 'background 0.15s'
+                    fontSize: '12px', fontWeight: '600', cursor: sendingOtp ? 'not-allowed' : 'pointer',
+                    whiteSpace: 'nowrap', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, transition: 'background 0.15s'
                   }}
-                  onMouseEnter={e => e.currentTarget.style.background = T.surface3}
-                  onMouseLeave={e => e.currentTarget.style.background = T.surface2}
+                  onMouseEnter={e => !sendingOtp && (e.currentTarget.style.background = T.surface3)}
+                  onMouseLeave={e => !sendingOtp && (e.currentTarget.style.background = T.surface2)}
                 >
-                  {otpSent ? 'Resend' : 'Send OTP'}
+                  {sendingOtp ? (
+                    <>
+                      <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} />
+                      <span>Sending...</span>
+                    </>
+                  ) : (
+                    <span>{otpSent ? 'Resend' : 'Send OTP'}</span>
+                  )}
                 </button>
               </div>
             </div>

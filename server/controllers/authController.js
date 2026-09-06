@@ -19,7 +19,9 @@ async function sendOtp(req, res) {
 
   let emailPreviewUrl = null;
   try {
-    const mailResult = await sendEmailOtp(cleanEmail, otp);
+    const mailPromise = sendEmailOtp(cleanEmail, otp);
+    const timeoutPromise = new Promise(resolve => setTimeout(() => resolve(null), 4500));
+    const mailResult = await Promise.race([mailPromise, timeoutPromise]);
     if (mailResult && mailResult.previewUrl) {
       emailPreviewUrl = mailResult.previewUrl;
     }
