@@ -77,8 +77,26 @@ export default function ConnectPage({ onConnect, onOpenProfile, onToggleTheme, o
   const [copied, setCopied] = useState(false);
   const [openFaq, setOpenFaq] = useState(null);
 
-  // Auth & Room Modal States
-  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [inviteRoom] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return (params.get('room') || params.get('join') || '').trim().toLowerCase();
+    } catch {
+      return '';
+    }
+  });
+
+  // Auth & Room Modal States (Auto-opens Signup if guest accessed an invite link without an account)
+  const [authModalOpen, setAuthModalOpen] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const urlRoom = (params.get('room') || params.get('join') || '').trim().toLowerCase();
+      const saved = localStorage.getItem('cypr_user_account');
+      return Boolean(urlRoom && !saved);
+    } catch {
+      return false;
+    }
+  });
   const [authTab, setAuthTab] = useState('signup'); // 'signup' | 'login'
   const [roomModalOpen, setRoomModalOpen] = useState(false);
   const [roomModalMode, setRoomModalMode] = useState('create');
@@ -95,6 +113,11 @@ export default function ConnectPage({ onConnect, onOpenProfile, onToggleTheme, o
   };
 
   const openJoinRoom = () => {
+    if (!userAccount) {
+      setAuthTab('signup');
+      setAuthModalOpen(true);
+      return;
+    }
     setRoomModalMode('join');
     setRoomModalOpen(true);
   };
@@ -106,6 +129,20 @@ export default function ConnectPage({ onConnect, onOpenProfile, onToggleTheme, o
     localStorage.setItem('cypr_user_name', user.name);
     localStorage.setItem('cypr_user_account', JSON.stringify(user));
     setAuthModalOpen(false);
+
+    // If guest arrived via invite link, immediately proceed to join the lounge!
+    if (inviteRoom) {
+      onConnect({
+        name: user.name,
+        roomId: inviteRoom,
+        passcode: sessionStorage.getItem(`cypr_passcode_${inviteRoom}`) || '',
+        maxCapacity: 2,
+        isPublic: false,
+        isCreateMode: false
+      });
+      return;
+    }
+
     setRoomModalMode('create');
     setRoomModalOpen(true);
   };
@@ -892,6 +929,7 @@ export default function ConnectPage({ onConnect, onOpenProfile, onToggleTheme, o
         onAuthSuccess={handleAuthSuccess}
         onSuccess={handleAuthSuccess}
         initialTab={authTab}
+        inviteRoom={inviteRoom}
         theme={theme}
       />
 

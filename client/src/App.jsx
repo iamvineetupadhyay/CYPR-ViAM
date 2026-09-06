@@ -9,6 +9,7 @@ import CallPage from './pages/CallPage';
 import AiPage from './pages/AiPage';
 import FloatingCallWindow from './components/FloatingCallWindow';
 import GlobalIncomingCallModal from './components/GlobalIncomingCallModal';
+import RoomPasscodeModal from './components/RoomPasscodeModal';
 import { useWebRTC } from './hooks/useWebRTC';
 import { SERVER_URL } from './utils/apiUrl';
 
@@ -22,6 +23,7 @@ export default function App() {
   const [isCallActive, setIsCallActive] = useState(false);
   const [isCallMinimized, setIsCallMinimized] = useState(false);
   const [incomingCall, setIncomingCall] = useState(null);
+  const [passcodeModal, setPasscodeModal] = useState({ isOpen: false, roomId: '', error: '' });
   const [knockPending, setKnockPending] = useState(false);
   const [knockRequests, setKnockRequests] = useState([]);
 
@@ -157,7 +159,14 @@ export default function App() {
         const savedAccountStr = localStorage.getItem('cypr_user_account');
         let savedAccount = null;
         try { savedAccount = savedAccountStr ? JSON.parse(savedAccountStr) : null; } catch {}
-        const savedName = savedAccount?.name || localStorage.getItem('cypr_user_name') || 'Guest User';
+
+        // MANDATORY ACCOUNT CHECK: If guest has no account, DO NOT auto-join! Stay on connect page so AuthModal opens.
+        if (!savedAccount) {
+          console.log('🔒 [Lounge Entry Restricted] Guest must create an account to join room:', urlRoom);
+          return;
+        }
+
+        const savedName = savedAccount?.name || 'User';
         const savedPasscode = sessionStorage.getItem(`cypr_passcode_${urlRoom}`) || '';
 
         const userObj = { name: savedName, socketId: newSocket.id, avatar: savedAccount?.avatar };
@@ -177,11 +186,13 @@ export default function App() {
     newSocket.on('room-users-update', ({ users }) => {
       setRoomUsers(users);
       setKnockPending(false);
+      setPasscodeModal({ isOpen: false, roomId: '', error: '' });
       setPage((prevPage) => (prevPage === 'connect' ? 'home' : prevPage));
     });
 
     newSocket.on('room-joined', ({ roomId, isHost }) => {
       setKnockPending(false);
+      setPasscodeModal({ isOpen: false, roomId: '', error: '' });
       setPage('home');
     });
 
@@ -191,15 +202,18 @@ export default function App() {
     // Security Knock & Approval Handlers
     newSocket.on('knock-pending', () => {
       setKnockPending(true);
+      setPasscodeModal({ isOpen: false, roomId: '', error: '' });
     });
 
     newSocket.on('knock-approved', () => {
       setKnockPending(false);
+      setPasscodeModal({ isOpen: false, roomId: '', error: '' });
       setPage('home');
     });
 
     newSocket.on('knock-rejected', ({ message }) => {
       setKnockPending(false);
+      setPasscodeModal({ isOpen: false, roomId: '', error: '' });
       sessionStorage.removeItem('cypr_active_room');
       alert(`🔒 Access Denied: ${message || 'The Room Host declined your request.'}`);
       setPage('connect');
@@ -214,21 +228,14 @@ export default function App() {
     newSocket.on('room-error', ({ code, message }) => {
       setKnockPending(false);
       if (code === 'PASSCODE_INVALID') {
-        const pass = prompt(`🔒 Private Lounge Locked!\n\nThis room is protected by a secret Passcode/PIN. Please enter the passcode to request entry:`);
-        if (pass && pass.trim()) {
-          const params = new URLSearchParams(window.location.search);
-          const roomParam = (params.get('room') || params.get('join') || sessionStorage.getItem('cypr_active_room') || '').trim().toLowerCase();
-          let savedName = localStorage.getItem('cypr_user_name') || 'Guest User';
-          sessionStorage.setItem(`cypr_passcode_${roomParam}`, pass.trim());
-          newSocket.emit('join-room', {
-            roomId: roomParam,
-            user: { name: savedName, socketId: newSocket.id },
-            passcode: pass.trim(),
-            maxCapacity: 2,
-            isPublic: false
-          });
-          return;
-        }
+        const params = new URLSearchParams(window.location.search);
+        const targetRoom = (params.get('room') || params.get('join') || sessionStorage.getItem('cypr_active_room') || roomId || '').trim().toLowerCase();
+        setPasscodeModal((prev) => ({
+          isOpen: true,
+          roomId: targetRoom,
+          error: prev.isOpen ? '⚠️ Incorrect passcode. Please check with the room host.' : ''
+        }));
+        return;
       }
       sessionStorage.removeItem('cypr_active_room');
       alert(`⚠️ ${message}`);
@@ -292,12 +299,43 @@ export default function App() {
   const handleLeave = () => {
     if (isCallActive) handleEndCall();
     setIncomingCall(null);
+    setPasscodeModal({ isOpen: false, roomId: '', error: '' });
     sessionStorage.removeItem('cypr_active_room');
     setPage('connect');
     setCurrentUser(null);
     setRoomUsers([]);
     setRoomId('');
     window.history.pushState({}, '', window.location.pathname);
+  };
+
+  const handlePasscodeSubmit = (enteredPasscode) => {
+    const targetRoom = (passcodeModal.roomId || roomId || '').toLowerCase().trim();
+    if (!enteredPasscode || !targetRoom) return;
+
+    sessionStorage.setItem(`cypr_passcode_${targetRoom}`, enteredPasscode);
+    const savedAccountStr = localStorage.getItem('cypr_user_account');
+    let savedAccount = null;
+    try { savedAccount = savedAccountStr ? JSON.parse(savedAccountStr) : null; } catch {}
+    const savedName = savedAccount?.name || localStorage.getItem('cypr_user_name') || 'Guest User';
+    const userObj = { name: savedName, socketId: socket?.id, avatar: savedAccount?.avatar };
+    setCurrentUser(userObj);
+    setRoomId(targetRoom);
+
+    if (socket) {
+      socket.emit('join-room', {
+        roomId: targetRoom,
+        user: userObj,
+        passcode: enteredPasscode,
+        maxCapacity: 2,
+        isPublic: false,
+        isCreateMode: false
+      });
+    }
+  };
+
+  const handlePasscodeCancel = () => {
+    setPasscodeModal({ isOpen: false, roomId: '', error: '' });
+    handleLeave();
   };
 
   const handleOpenCall = (isVideo = true) => {
@@ -544,6 +582,16 @@ export default function App() {
         incomingCall={incomingCall}
         onAccept={handleAcceptIncomingCall}
         onDecline={handleDeclineIncomingCall}
+      />
+
+      {/* PRIVATE ROOM PASSCODE / PIN POPUP MODAL */}
+      <RoomPasscodeModal
+        isOpen={passcodeModal.isOpen}
+        roomId={passcodeModal.roomId}
+        errorMessage={passcodeModal.error}
+        onSubmit={handlePasscodeSubmit}
+        onCancel={handlePasscodeCancel}
+        theme={theme}
       />
     </>
   );

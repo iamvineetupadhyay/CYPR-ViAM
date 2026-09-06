@@ -14,7 +14,7 @@ const AVATAR_PRESETS = [
   'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=200&q=80'
 ];
 
-export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, initialTab = 'signup', theme }) {
+export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, initialTab = 'signup', inviteRoom = '', theme }) {
   const currentTheme = theme || (typeof document !== 'undefined' && document.body.classList.contains('light-theme') ? 'light' : 'dark');
   const T = getT(currentTheme);
   const [tab, setTab] = useState(initialTab); // 'login' | 'signup'
@@ -234,12 +234,39 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess, i
         </button>
 
         {/* Header Logo */}
-        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '16px' }}>
           <img src="/viam_logo.png" alt="VIAM" style={{ height: '56px', width: 'auto', marginBottom: '8px', objectFit: 'contain' }} />
           <h2 style={{ fontSize: '18px', fontWeight: '700', color: T.textPrimary, margin: 0, letterSpacing: '-0.3px' }}>
             {tab === 'signup' ? 'Create Account' : 'Welcome Back'}
           </h2>
         </div>
+
+        {/* Invite Notice Banner */}
+        {inviteRoom && (
+          <div
+            style={{
+              background: 'rgba(255, 85, 0, 0.12)',
+              border: '1.5px solid rgba(255, 85, 0, 0.4)',
+              borderRadius: '14px',
+              padding: '12px 14px',
+              marginBottom: '18px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              textAlign: 'left'
+            }}
+          >
+            <ShieldCheck size={24} color="#ff5500" style={{ flexShrink: 0 }} />
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: '800', color: '#ff7733' }}>
+                Lounge Invite: {inviteRoom}
+              </div>
+              <div style={{ fontSize: '11.5px', color: T.textMuted1, marginTop: '2px', lineHeight: '1.4' }}>
+                Account registration is mandatory to enter this lounge. Please sign up or log in to proceed.
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Tab Switcher */}
         <div style={{
