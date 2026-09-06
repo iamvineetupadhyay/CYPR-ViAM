@@ -84,7 +84,38 @@ async function sendEmailOtp(toEmail, otpCode) {
     </div>
   `;
 
-  // 1. Try Resend API first (works reliably on Render/cloud port 443 HTTPS)
+  // 1. Try Brevo REST API (300 free emails/day to ANY email address over HTTPS Port 443)
+  if (process.env.BREVO_API_KEY) {
+    try {
+      const senderEmail = process.env.SMTP_USER || 'mail.cyprtech@gmail.com';
+      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'api-key': process.env.BREVO_API_KEY.trim(),
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          sender: { name: 'CYPR ViAM', email: senderEmail },
+          to: [{ email: toEmail }],
+          subject: `🔒 Your CYPR ViAM OTP Code: ${otpCode}`,
+          htmlContent: htmlContent
+        })
+      });
+
+      const resData = await res.json();
+      if (res.ok && resData && resData.messageId) {
+        console.log(`🚀 [CYPR Mailer via Brevo] Delivered OTP email to ${toEmail} (ID: ${resData.messageId})`);
+        return { success: true, id: resData.messageId, provider: 'brevo' };
+      } else {
+        console.warn(`⚠️ [Brevo API Notice]:`, resData?.message || resData);
+      }
+    } catch (brevoErr) {
+      console.warn(`⚠️ [Brevo Error]: ${brevoErr.message}`);
+    }
+  }
+
+  // 2. Try Resend API (works reliably on Render/cloud port 443 HTTPS)
   const resendKey = process.env.RESEND_API_KEY;
   if (resendKey) {
     try {
