@@ -209,7 +209,13 @@ export default function CinemaPage({
   }, [socket, roomId, onMediaChange, startLocalCall, createOfferAndSend, stopLocalMedia]);
 
   const handleSelectMedia = async (newMedia) => {
-    const updated = { ...mediaState, ...newMedia, currentTime: 0, isPlaying: true };
+    const updated = {
+      ...mediaState,
+      ...newMedia,
+      currentTime: 0,
+      isPlaying: true,
+      senderSocketId: socket?.id
+    };
     setMediaState(updated);
     onMediaChange?.(updated);
 

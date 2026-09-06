@@ -30,7 +30,9 @@ import {
   RefreshCw,
   Link2,
   Server,
-  Zap
+  Zap,
+  HardDrive,
+  FolderCheck
 } from 'lucide-react';
 import Hls from 'hls.js';
 import { extractYouTubeId } from '../utils/movieSources';
@@ -105,6 +107,40 @@ export default function CinemaPlayer({
   const [audioBoost, setAudioBoost] = useState(1); // 1 = 100%, 1.5 = 150%, 2 = 200%
   const [selectedQuality, setSelectedQuality] = useState('Auto');
   const [availableQualities, setAvailableQualities] = useState(['Auto', '1080p', '720p', '480p']);
+
+  // Local File Co-Watching state for Receiver
+  const [receiverLocalUrl, setReceiverLocalUrl] = useState(null);
+  const [receiverFileName, setReceiverFileName] = useState('');
+  const receiverFileInputRef = useRef(null);
+
+  // Clear receiver local URL if media changes to a different title
+  useEffect(() => {
+    setReceiverLocalUrl(null);
+    setReceiverFileName('');
+  }, [mediaState?.title]);
+
+  // Check if current user is the emitter who picked this local file on this device
+  const isLocalEmitter = mediaState?.sourceType === 'local' && (
+    (mediaState?.senderSocketId && mediaState?.senderSocketId === socket?.id) ||
+    (mediaState?.ownerSocketId && mediaState?.ownerSocketId === socket?.id)
+  );
+
+  const isLocalReceiverNeedsFile = mediaState?.sourceType === 'local' && !isLocalEmitter && !receiverLocalUrl;
+
+  const handleReceiverLocalFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const blobUrl = URL.createObjectURL(file);
+    setReceiverLocalUrl(blobUrl);
+    setReceiverFileName(file.name);
+    if (videoRef.current) {
+      videoRef.current.src = blobUrl;
+      videoRef.current.currentTime = mediaState?.currentTime || 0;
+      if (mediaState?.isPlaying) {
+        videoRef.current.play().catch(() => {});
+      }
+    }
+  };
 
   // Sync incoming mediaState prop changes from room
   useEffect(() => {
@@ -900,11 +936,130 @@ export default function CinemaPlayer({
             allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
             title="Video Player"
           />
-        ) : mediaState.url ? (
+        ) : isLocalReceiverNeedsFile ? (
+          /* Receiver Local File Co-Watching Prompt */
+          <div
+            style={{
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '28px',
+              textAlign: 'center',
+              background: 'radial-gradient(circle at center, rgba(30, 16, 25, 0.95) 0%, rgba(9, 6, 11, 0.98) 100%)',
+              color: '#ffffff',
+              position: 'relative',
+              zIndex: 10
+            }}
+          >
+            <div
+              style={{
+                width: '72px',
+                height: '72px',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, rgba(244, 63, 94, 0.2) 0%, rgba(190, 18, 60, 0.3) 100%)',
+                border: '2px solid rgba(244, 63, 94, 0.5)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '18px',
+                boxShadow: '0 0 35px rgba(244, 63, 94, 0.35)'
+              }}
+            >
+              <HardDrive size={34} color="#f43f5e" />
+            </div>
+
+            <h3 style={{ fontSize: '22px', fontWeight: '800', color: '#ffffff', marginBottom: '8px', letterSpacing: '-0.3px' }}>
+              Local Video File Synced
+            </h3>
+
+            <p style={{ fontSize: '13px', color: '#a1a1aa', maxWidth: '500px', lineHeight: '1.6', marginBottom: '8px' }}>
+              Partner has selected a local downloaded movie from their laptop:
+            </p>
+
+            <div
+              style={{
+                background: 'rgba(244, 63, 94, 0.12)',
+                border: '1px solid rgba(244, 63, 94, 0.35)',
+                borderRadius: '12px',
+                padding: '10px 22px',
+                fontSize: '13.5px',
+                fontWeight: '700',
+                color: '#fb7185',
+                marginBottom: '18px',
+                fontFamily: 'monospace',
+                maxWidth: '90%',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              📁 {mediaState.title || 'Local Video File'}
+            </div>
+
+            <p style={{ fontSize: '12.5px', color: '#71717a', maxWidth: '460px', lineHeight: '1.5', marginBottom: '22px' }}>
+              To watch together in synchronized 4K on your computer, select your copy of this video file:
+            </p>
+
+            <label
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '12px 28px',
+                fontSize: '13.5px',
+                fontWeight: '700',
+                borderRadius: '14px',
+                background: 'linear-gradient(135deg, #f43f5e 0%, #be123c 100%)',
+                color: '#ffffff',
+                border: 'none',
+                cursor: 'pointer',
+                boxShadow: '0 4px 20px rgba(244, 63, 94, 0.45)',
+                transition: 'transform 0.15s ease'
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.03)')}
+              onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+            >
+              <Upload size={18} />
+              <span>Select "{mediaState.title || 'Movie'}" from PC to Sync</span>
+              <input
+                ref={receiverFileInputRef}
+                type="file"
+                accept="video/*"
+                onChange={handleReceiverLocalFileSelect}
+                style={{ display: 'none' }}
+              />
+            </label>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '20px' }}>
+              <button
+                onClick={onOpenSourcePicker}
+                style={{
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  color: '#e4e4e7',
+                  padding: '9px 18px',
+                  borderRadius: '10px',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Film size={14} color="#f43f5e" />
+                <span>Choose Online Stream / YouTube Instead</span>
+              </button>
+            </div>
+          </div>
+        ) : (mediaState.url || receiverLocalUrl) ? (
           /* Direct / Local / HLS Video Player */
           <video
             ref={videoRef}
-            src={mediaState.url?.includes('.m3u8') ? undefined : mediaState.url}
+            src={receiverLocalUrl || (mediaState.url?.includes('.m3u8') ? undefined : mediaState.url)}
             playsInline
             crossOrigin="anonymous"
             controls={false}

@@ -24,6 +24,7 @@ function registerMediaHandlers(io, socket, state) {
       ...newMedia,
       currentTime: 0,
       isPlaying: true,
+      senderSocketId: socket.id,
       updatedAt: Date.now()
     };
 
