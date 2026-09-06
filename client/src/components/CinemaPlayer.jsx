@@ -430,7 +430,29 @@ export default function CinemaPlayer({
   const videoRef = useRef(null);
   const ytPlayerRef = useRef(null);
   const ytContainerRef = useRef(null);
+  const iframeRef = useRef(null);
   const isInternalUpdateRef = useRef(false);
+
+  const sendIframeMessage = (action, val) => {
+    if (!iframeRef.current?.contentWindow) return;
+    try {
+      if (action === 'play') {
+        iframeRef.current.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+        iframeRef.current.contentWindow.postMessage({ method: 'play' }, '*');
+        iframeRef.current.contentWindow.postMessage({ action: 'play' }, '*');
+      } else if (action === 'pause') {
+        iframeRef.current.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
+        iframeRef.current.contentWindow.postMessage({ method: 'pause' }, '*');
+        iframeRef.current.contentWindow.postMessage({ action: 'pause' }, '*');
+      } else if (action === 'seek') {
+        iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'seekTo', args: [val, true] }), '*');
+        iframeRef.current.contentWindow.postMessage({ method: 'setCurrentTime', value: val }, '*');
+        iframeRef.current.contentWindow.postMessage({ action: 'seek', time: val }, '*');
+      }
+    } catch (e) {
+      // Ignored for cross-origin security boundaries
+    }
+  };
 
   const ytVideoId = mediaState.sourceType === 'youtube' ? extractYouTubeId(mediaState.url) : null;
 
@@ -618,6 +640,9 @@ export default function CinemaPlayer({
       if (mediaState.sourceType === 'youtube' && ytPlayerRef.current?.seekTo) {
         ytPlayerRef.current.seekTo(t, true);
         ytPlayerRef.current.playVideo();
+      } else if (mediaState.sourceType === 'embed') {
+        sendIframeMessage('seek', t);
+        sendIframeMessage('play');
       } else if (videoRef.current) {
         videoRef.current.currentTime = t;
         videoRef.current.play().catch(() => { });
@@ -637,6 +662,8 @@ export default function CinemaPlayer({
       if (mediaState.sourceType === 'youtube' && ytPlayerRef.current?.pauseVideo) {
         if (t !== undefined) ytPlayerRef.current.seekTo(t, true);
         ytPlayerRef.current.pauseVideo();
+      } else if (mediaState.sourceType === 'embed') {
+        sendIframeMessage('pause');
       } else if (videoRef.current) {
         if (t !== undefined) videoRef.current.currentTime = t;
         videoRef.current.pause();
@@ -654,6 +681,8 @@ export default function CinemaPlayer({
 
       if (mediaState.sourceType === 'youtube' && ytPlayerRef.current?.seekTo) {
         ytPlayerRef.current.seekTo(t, true);
+      } else if (mediaState.sourceType === 'embed') {
+        sendIframeMessage('seek', t);
       } else if (videoRef.current) {
         videoRef.current.currentTime = t;
       }
@@ -679,6 +708,8 @@ export default function CinemaPlayer({
         setCurrentTime(t);
         if (mediaState.sourceType === 'youtube' && ytPlayerRef.current?.seekTo) {
           ytPlayerRef.current.seekTo(t, true);
+        } else if (mediaState.sourceType === 'embed') {
+          sendIframeMessage('seek', t);
         } else if (videoRef.current) {
           videoRef.current.currentTime = t;
         }
@@ -731,6 +762,14 @@ export default function CinemaPlayer({
         ytPlayerRef.current.pauseVideo();
         socket?.emit('media-pause', { currentTime: t });
       }
+    } else if (mediaState.sourceType === 'embed') {
+      if (nextState) {
+        sendIframeMessage('play');
+        socket?.emit('media-play', { currentTime: currentTime || 0 });
+      } else {
+        sendIframeMessage('pause');
+        socket?.emit('media-pause', { currentTime: currentTime || 0 });
+      }
     } else if (videoRef.current) {
       t = videoRef.current.currentTime;
       if (nextState) {
@@ -751,6 +790,8 @@ export default function CinemaPlayer({
     setCurrentTime(t);
     if (mediaState.sourceType === 'youtube' && ytPlayerRef.current?.seekTo) {
       ytPlayerRef.current.seekTo(t, true);
+    } else if (mediaState.sourceType === 'embed') {
+      sendIframeMessage('seek', t);
     } else if (videoRef.current) {
       videoRef.current.currentTime = t;
     }
@@ -929,6 +970,7 @@ export default function CinemaPlayer({
         ) : mediaState.sourceType === 'embed' && mediaState.url ? (
           /* Embed Player (Hdhub4u, VidSrc, etc.) — source's own player */
           <iframe
+            ref={iframeRef}
             key={mediaState.url}
             src={mediaState.url}
             style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
@@ -1365,12 +1407,33 @@ export default function CinemaPlayer({
                 </>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button
+                    onClick={togglePlay}
+                    className="ctrl-btn play-btn"
+                    title={isPlaying ? 'Pause Room Stream' : 'Play Room Stream'}
+                  >
+                    {isPlaying ? <Pause size={18} /> : <Play size={18} style={{ marginLeft: '2px' }} />}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      onMediaChange?.(mediaState);
+                      socket?.emit('media-change', mediaState);
+                    }}
+                    className="ctrl-btn"
+                    title="Resync Stream for Both Users"
+                    style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', padding: '0 8px', width: 'auto' }}
+                  >
+                    <RefreshCw size={13} />
+                    <span style={{ fontSize: '11px', fontWeight: '600' }}>Resync Room</span>
+                  </button>
+
                   <span style={{
                     fontSize: '11px', fontWeight: '800', color: '#c084fc',
                     background: 'rgba(168, 85, 247, 0.15)', border: '1px solid rgba(168, 85, 247, 0.35)',
                     padding: '3px 10px', borderRadius: '14px', display: 'flex', alignItems: 'center', gap: '5px'
                   }}>
-                    <Zap size={12} color="#c084fc" /> Embed CDN Server
+                    <Zap size={12} color="#c084fc" /> {mediaState.servers?.find(s => s.url === mediaState.url)?.name || 'CDN Server Active'}
                   </span>
                 </div>
               )}
