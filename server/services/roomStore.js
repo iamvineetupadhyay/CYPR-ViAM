@@ -35,15 +35,22 @@ class RoomStore {
     if (!roomsDB.has(cleanId)) {
       const cap = isPublic ? 100 : Math.min(Math.max(parseInt(maxCapacity) || 2, 2), 100);
       const savedMessages = DBService.getRoomMessages(cleanId) || [];
+      const hostKey = hostUser ? (hostUser.email || hostUser.name || '').toLowerCase().trim() : '';
+      const initialApproved = new Set();
+      if (hostKey) initialApproved.add(hostKey);
+
       roomsDB.set(cleanId, {
         roomId: cleanId,
         hostSocketId: hostSocketId || null,
         hostUser: hostUser || null,
+        originalHostName: hostUser?.name || null,
+        originalHostEmail: hostUser?.email || null,
         passcode: passcode ? String(passcode).trim() : '',
         maxCapacity: cap,
         isPublic: !!isPublic,
         users: new Map(),
         waitingUsers: new Map(),
+        approvedMembers: initialApproved,
         messages: savedMessages,
         mediaState: { ...DEFAULT_MEDIA_STATE, updatedAt: Date.now() },
         cleanupTimer: null

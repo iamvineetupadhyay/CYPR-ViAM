@@ -18,7 +18,17 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [roomId, setRoomId] = useState('');
   const [roomUsers, setRoomUsers] = useState([]);
-  const [page, setPage] = useState('connect'); // 'connect' | 'home' | 'chat' | 'cinema' | 'profile' | 'call'
+  const [page, setPage] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const hasRoom = (params.get('room') || params.get('join') || sessionStorage.getItem('cypr_active_room') || '').trim();
+      const savedPage = sessionStorage.getItem('cypr_active_page');
+      if (hasRoom && savedPage && savedPage !== 'connect') {
+        return savedPage;
+      }
+    } catch {}
+    return 'connect';
+  });
   const [callIsVideo, setCallIsVideo] = useState(true);
   const [isCallActive, setIsCallActive] = useState(false);
   const [isCallMinimized, setIsCallMinimized] = useState(false);
@@ -26,6 +36,13 @@ export default function App() {
   const [passcodeModal, setPasscodeModal] = useState({ isOpen: false, roomId: '', error: '' });
   const [knockPending, setKnockPending] = useState(false);
   const [knockRequests, setKnockRequests] = useState([]);
+
+  // Preserve active page across refresh
+  useEffect(() => {
+    if (page && page !== 'connect') {
+      sessionStorage.setItem('cypr_active_page', page);
+    }
+  }, [page]);
 
   // Shared WebRTC instance attached at App root
   const webrtc = useWebRTC(socket, roomId, currentUser);
@@ -169,7 +186,7 @@ export default function App() {
         const savedName = savedAccount?.name || 'User';
         const savedPasscode = sessionStorage.getItem(`cypr_passcode_${urlRoom}`) || '';
 
-        const userObj = { name: savedName, socketId: newSocket.id, avatar: savedAccount?.avatar };
+        const userObj = { name: savedName, socketId: newSocket.id, avatar: savedAccount?.avatar, email: savedAccount?.email };
         setCurrentUser(userObj);
         setRoomId(urlRoom);
         sessionStorage.setItem('cypr_active_room', urlRoom);
@@ -187,13 +204,20 @@ export default function App() {
       setRoomUsers(users);
       setKnockPending(false);
       setPasscodeModal({ isOpen: false, roomId: '', error: '' });
-      setPage((prevPage) => (prevPage === 'connect' ? 'home' : prevPage));
+
+      // Only navigate if user has an active room session (prevents bounce-back when user clicked Leave)
+      const activeRoom = sessionStorage.getItem('cypr_active_room');
+      if (!activeRoom) return;
+
+      const savedPage = sessionStorage.getItem('cypr_active_page');
+      setPage((prevPage) => (prevPage === 'connect' ? (savedPage && savedPage !== 'connect' ? savedPage : 'home') : prevPage));
     });
 
     newSocket.on('room-joined', ({ roomId, isHost }) => {
       setKnockPending(false);
       setPasscodeModal({ isOpen: false, roomId: '', error: '' });
-      setPage('home');
+      const savedPage = sessionStorage.getItem('cypr_active_page');
+      setPage((prevPage) => (prevPage === 'connect' ? (savedPage && savedPage !== 'connect' ? savedPage : 'home') : prevPage));
     });
 
     newSocket.on('initial-media-state', (state) => { if (state) setMediaState(state); });
@@ -208,7 +232,8 @@ export default function App() {
     newSocket.on('knock-approved', () => {
       setKnockPending(false);
       setPasscodeModal({ isOpen: false, roomId: '', error: '' });
-      setPage('home');
+      const savedPage = sessionStorage.getItem('cypr_active_page');
+      setPage((prevPage) => (prevPage === 'connect' ? (savedPage && savedPage !== 'connect' ? savedPage : 'home') : prevPage));
     });
 
     newSocket.on('knock-rejected', ({ message }) => {
@@ -263,13 +288,17 @@ export default function App() {
 
   const handleConnect = ({ name, roomId: joinedRoomId, passcode, maxCapacity, isPublic, isCreateMode }) => {
     const cleanId = (joinedRoomId || 'cypr-lounge').toLowerCase().trim();
-    const finalName = name || localStorage.getItem('cypr_user_name') || 'Host';
-    const userObj = { name: finalName, socketId: socket?.id };
+    const savedAccountStr = localStorage.getItem('cypr_user_account');
+    let savedAccount = null;
+    try { savedAccount = savedAccountStr ? JSON.parse(savedAccountStr) : null; } catch {}
+    const finalName = name || savedAccount?.name || localStorage.getItem('cypr_user_name') || 'Host';
+    const userObj = { name: finalName, socketId: socket?.id, avatar: savedAccount?.avatar, email: savedAccount?.email };
     setCurrentUser(userObj);
     setRoomId(cleanId);
     
     // Remember room & passcode in session storage so page refresh retains access
     sessionStorage.setItem('cypr_active_room', cleanId);
+    sessionStorage.setItem('cypr_active_page', 'home');
     if (passcode) {
       sessionStorage.setItem(`cypr_passcode_${cleanId}`, passcode);
     }
@@ -300,11 +329,19 @@ export default function App() {
     if (isCallActive) handleEndCall();
     setIncomingCall(null);
     setPasscodeModal({ isOpen: false, roomId: '', error: '' });
+    const leavingRoom = roomId || sessionStorage.getItem('cypr_active_room');
     sessionStorage.removeItem('cypr_active_room');
+    sessionStorage.removeItem('cypr_active_page');
+    if (leavingRoom) {
+      sessionStorage.removeItem(`cypr_passcode_${leavingRoom}`);
+    }
     setPage('connect');
     setCurrentUser(null);
     setRoomUsers([]);
     setRoomId('');
+    if (socket && leavingRoom) {
+      socket.emit('leave-room', { roomId: leavingRoom });
+    }
     window.history.pushState({}, '', window.location.pathname);
   };
 
@@ -317,7 +354,7 @@ export default function App() {
     let savedAccount = null;
     try { savedAccount = savedAccountStr ? JSON.parse(savedAccountStr) : null; } catch {}
     const savedName = savedAccount?.name || localStorage.getItem('cypr_user_name') || 'Guest User';
-    const userObj = { name: savedName, socketId: socket?.id, avatar: savedAccount?.avatar };
+    const userObj = { name: savedName, socketId: socket?.id, avatar: savedAccount?.avatar, email: savedAccount?.email };
     setCurrentUser(userObj);
     setRoomId(targetRoom);
 

@@ -21,16 +21,24 @@ function registerRoomHandlers(io, socket, state) {
       });
     } else {
       // If the reconnecting user is the original host (or room has no active host), restore host permissions
-      if (!room.hostSocketId || room.hostUser?.name === state.currentUser?.name) {
+      const isOriginalHost = (room.originalHostName && room.originalHostName === state.currentUser?.name) ||
+                             (room.originalHostEmail && room.originalHostEmail === state.currentUser?.email);
+      if (!room.hostSocketId || room.hostUser?.name === state.currentUser?.name || isOriginalHost) {
         room.hostSocketId = socket.id;
         room.hostUser = state.currentUser;
       }
     }
 
-    const isHost = room.hostSocketId === socket.id || room.hostUser?.name === state.currentUser?.name;
+    const isHost = room.hostSocketId === socket.id ||
+                   room.hostUser?.name === state.currentUser?.name ||
+                   (room.originalHostName && room.originalHostName === state.currentUser?.name);
 
-    // 1. STRICT PASSCODE CHECK FOR GUESTS
-    if (room.passcode && !isHost) {
+    // Check if user is already an approved member (reconnecting/refreshing without needing to re-knock)
+    const userKey = (state.currentUser?.email || state.currentUser?.name || '').toLowerCase().trim();
+    const isAlreadyApproved = room.approvedMembers && userKey && room.approvedMembers.has(userKey);
+
+    // 1. STRICT PASSCODE CHECK FOR GUESTS (bypassed if already approved member reconnecting)
+    if (room.passcode && !isHost && !isAlreadyApproved) {
       const isPasscodeCorrect = RoomStore.verifyPasscode(cleanRoomId, passcode);
       if (!isPasscodeCorrect) {
         console.warn(`🔒 [Passcode Denied] Socket ${socket.id} entered incorrect passcode ("${passcode}") for room "${cleanRoomId}". Expected: "${room.passcode}"`);
@@ -42,7 +50,8 @@ function registerRoomHandlers(io, socket, state) {
     }
 
     // 2. KNOCK & HOST APPROVAL MECHANISM FOR PRIVATE ROOMS
-    if (!isHost && !room.isPublic && room.hostSocketId && !room.users.has(socket.id)) {
+    // (Bypassed if user is Host OR already an approved member of this room!)
+    if (!isHost && !isAlreadyApproved && !room.isPublic && room.hostSocketId && !room.users.has(socket.id)) {
       console.log(`🚪 [Knock Request] User "${state.currentUser.name}" is knocking to enter private room ${cleanRoomId}`);
       
       // Store in waiting queue
@@ -82,6 +91,10 @@ function registerRoomHandlers(io, socket, state) {
       room.waitingUsers.delete(targetSocketId);
       const targetSocket = io.sockets.sockets.get(targetSocketId);
       if (targetSocket) {
+        if (!room.approvedMembers) room.approvedMembers = new Set();
+        const approvedKey = (waiting.user.email || waiting.user.name || '').toLowerCase().trim();
+        if (approvedKey) room.approvedMembers.add(approvedKey);
+
         targetSocket.emit('knock-approved', { roomId: room.roomId });
         completeUserJoin(io, targetSocket, room, waiting.user);
         console.log(`✅ [Knock Approved] Host approved ${waiting.user.name} into room ${room.roomId}`);
@@ -104,6 +117,42 @@ function registerRoomHandlers(io, socket, state) {
         });
         console.log(`❌ [Knock Denied] Host denied ${waiting.user.name} from room ${room.roomId}`);
       }
+    }
+  });
+
+  // Explicit Leave Room Handler
+  socket.on('leave-room', ({ roomId }) => {
+    const cleanRoomId = (roomId || state.currentRoom || '').toLowerCase().trim();
+    if (!cleanRoomId) return;
+
+    socket.leave(cleanRoomId);
+    state.currentRoom = null;
+
+    const room = RoomStore.getRoom(cleanRoomId);
+    const user = RoomStore.removeUserFromRoom(cleanRoomId, socket.id);
+
+    if (room) {
+      // If user explicitly left, revoke approved member cache so re-entry requires password/knock if private
+      if (user && room.approvedMembers) {
+        const uKey = (user.email || user.name || '').toLowerCase().trim();
+        room.approvedMembers.delete(uKey);
+      }
+
+      if (user) {
+        socket.to(cleanRoomId).emit('user-left', {
+          socketId: socket.id,
+          userName: user.name
+        });
+      }
+
+      const userList = Array.from(room.users.values());
+      io.to(cleanRoomId).emit('room-users-update', {
+        users: userList,
+        hostSocketId: room.hostSocketId,
+        maxCapacity: room.maxCapacity,
+        isPublic: room.isPublic
+      });
+      console.log(`👋 [User Left] ${user?.name || socket.id} left room ${cleanRoomId}`);
     }
   });
 
@@ -144,6 +193,10 @@ function completeUserJoin(io, socket, room, user) {
 
   socket.join(room.roomId);
   room.users.set(socket.id, user);
+
+  if (!room.approvedMembers) room.approvedMembers = new Set();
+  const uKey = (user.email || user.name || '').toLowerCase().trim();
+  if (uKey) room.approvedMembers.add(uKey);
 
   console.log(`[User Joined] ${user.name} joined room ${room.roomId} (Occupancy: ${room.users.size}/${room.maxCapacity})`);
 
