@@ -37,6 +37,25 @@ export function parseVoiceCommand(transcript) {
   if (/(?:open|go to|show|kholo)\s*(?:profile|my profile|settings|account)/i.test(text) || /^(profile)$/i.test(text)) {
     return { action: 'NAVIGATE', page: 'profile' };
   }
+  if (/(?:open|go to|show|kholo)\s*(?:rooms?|lounges?|members?)/i.test(text) || /^(rooms?)$/i.test(text)) {
+    return { action: 'NAVIGATE', page: 'rooms' };
+  }
+
+  // Room Creation & Join Commands ("create room", "room banao", "join room")
+  if (/(?:create|make|banao|start|new)\s*(?:room|lounge)/i.test(text) || /^(create room|new room|room banao)$/i.test(text)) {
+    return { action: 'CREATE_ROOM' };
+  }
+  if (/(?:join|enter|connect)\s*(?:room|lounge)/i.test(text) || /^(join room|enter room)$/i.test(text)) {
+    return { action: 'JOIN_ROOM' };
+  }
+
+  // Auth Commands ("login", "sign in", "sign up", "register", "account banao")
+  if (/(?:login|sign in|log in)/i.test(text)) {
+    return { action: 'AUTH', tab: 'login' };
+  }
+  if (/(?:signup|sign up|register|create account|account banao)/i.test(text)) {
+    return { action: 'AUTH', tab: 'signup' };
+  }
 
   // 3. Play / Start specific movie or anime
   // e.g. "play interstellar", "chalao pathaan", "watch doraemon", "play solo leveling"

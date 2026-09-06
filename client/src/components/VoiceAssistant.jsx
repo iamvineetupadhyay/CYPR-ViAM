@@ -60,7 +60,7 @@ export default function VoiceAssistant({ onCommand, onSearchMovie, onGlobalVoice
     }
   };
 
-  const handleFinalTranscript = (speechText) => {
+  const handleFinalTranscript = async (speechText) => {
     setFeedback(`Heard: "${speechText}"`);
     const parsed = parseVoiceCommand(speechText);
 
@@ -70,19 +70,22 @@ export default function VoiceAssistant({ onCommand, onSearchMovie, onGlobalVoice
         setFeedback(`🎨 ${msg}`);
         speakText(msg);
         onGlobalVoiceAction?.(parsed);
-      } else if (parsed.action === 'NAVIGATE') {
-        const pageNames = { chat: 'Messenger Chat', cinema: '4K Cinema', home: 'Home Hub', ai: 'ViAM AI', profile: 'User Profile' };
-        const msg = `Opening ${pageNames[parsed.page] || parsed.page}...`;
-        setFeedback(`🚀 ${msg}`);
-        speakText(msg);
-        onGlobalVoiceAction?.(parsed);
-      } else if (parsed.action === 'SEARCH_AND_PLAY') {
-        const msg = `Searching & playing ${parsed.query}!`;
-        setFeedback(`🎬 ${msg}`);
-        speakText(msg);
+      } else if (parsed.action === 'NAVIGATE' || parsed.action === 'SEARCH_AND_PLAY' || parsed.action === 'CREATE_ROOM' || parsed.action === 'JOIN_ROOM' || parsed.action === 'AUTH') {
         if (onGlobalVoiceAction) {
-          onGlobalVoiceAction(parsed);
-        } else {
+          const res = await onGlobalVoiceAction(parsed);
+          if (res?.feedback) {
+            setFeedback(res.feedback);
+          }
+        } else if (parsed.action === 'NAVIGATE') {
+          const pageNames = { chat: 'Messenger Chat', cinema: '4K Cinema', home: 'Home Hub', ai: 'ViAM AI', profile: 'User Profile', rooms: 'Rooms Management' };
+          const msg = `Opening ${pageNames[parsed.page] || parsed.page}...`;
+          setFeedback(`🚀 ${msg}`);
+          speakText(msg);
+          onCommand?.(parsed);
+        } else if (parsed.action === 'SEARCH_AND_PLAY') {
+          const msg = `Searching & playing ${parsed.query}!`;
+          setFeedback(`🎬 ${msg}`);
+          speakText(msg);
           onCommand?.(parsed);
         }
       } else if (parsed.action === 'PAUSE') {

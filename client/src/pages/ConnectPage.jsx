@@ -144,6 +144,108 @@ export default function ConnectPage({
     setUserAccount(null);
   };
 
+  const speakText = (text) => {
+    if ('speechSynthesis' in window && text) {
+      try {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.05;
+        utterance.pitch = 1.0;
+        window.speechSynthesis.speak(utterance);
+      } catch (e) {
+        console.warn('[Speech Synthesis Warning]', e);
+      }
+    }
+  };
+
+  // Voice command intent validator on Landing/Connect Page
+  const handleConnectPageVoiceAction = async (parsed) => {
+    if (!parsed) return null;
+
+    const savedAccount = userAccount || (() => {
+      try { return JSON.parse(localStorage.getItem('cypr_user_account')); } catch { return null; }
+    })();
+    const isLoggedIn = Boolean(savedAccount && (savedAccount.email || savedAccount.name));
+    const activeRoom = (sessionStorage.getItem('cypr_active_room') || '').trim();
+
+    if (parsed.action === 'NAVIGATE' || parsed.action === 'SEARCH_AND_PLAY') {
+      // 1. Guest user check: "agr user guest user h to Login and signup ko bole"
+      if (!isLoggedIn) {
+        const msg = "Please log in or sign up first to access this page.";
+        speakText(msg);
+        setAuthTab('signup');
+        setAuthModalOpen(true);
+        return {
+          handled: true,
+          success: false,
+          feedback: "🔒 Pehle Login ya Signup karein! (Please Log In / Sign Up)"
+        };
+      }
+
+      // If user is logged in and asks for profile: open profile drawer/page
+      if (parsed.action === 'NAVIGATE' && parsed.page === 'profile') {
+        const msg = "Opening User Profile";
+        speakText(msg);
+        if (onOpenProfile) onOpenProfile();
+        else setIsProfileOpen(true);
+        return { handled: true, success: true, feedback: `👤 ${msg}` };
+      }
+
+      // 2. User logged in, but room not created/joined: "agr user login h aur room nhi banaya to room banane ko bole"
+      if (!activeRoom) {
+        const msg = "Please create or join a room first to access this page.";
+        speakText(msg);
+        setRoomModalMode('create');
+        setRoomModalOpen(true);
+        return {
+          handled: true,
+          success: false,
+          feedback: "🚪 Kripya pehle room banayein! (Please create a room first)"
+        };
+      }
+
+      // 3. User logged in AND room created: "agr login bhi h room bhi created h to redirect kr do!!"
+      return onGlobalVoiceAction?.(parsed);
+    }
+
+    if (parsed.action === 'CREATE_ROOM') {
+      if (!isLoggedIn) {
+        const msg = "Please log in or sign up first to create a room.";
+        speakText(msg);
+        setAuthTab('signup');
+        setAuthModalOpen(true);
+        return { handled: true, success: false, feedback: "🔒 Please Log In / Sign Up first" };
+      }
+      openCreateRoom();
+      speakText("Opening room creation window.");
+      return { handled: true, success: true, feedback: '✨ Create Room' };
+    }
+
+    if (parsed.action === 'JOIN_ROOM') {
+      if (!isLoggedIn) {
+        const msg = "Please log in or sign up first to join a room.";
+        speakText(msg);
+        setAuthTab('signup');
+        setAuthModalOpen(true);
+        return { handled: true, success: false, feedback: "🔒 Please Log In / Sign Up first" };
+      }
+      openJoinRoom();
+      speakText("Opening join room window.");
+      return { handled: true, success: true, feedback: '🚪 Join Room' };
+    }
+
+    if (parsed.action === 'AUTH') {
+      setAuthTab(parsed.tab || 'signup');
+      setAuthModalOpen(true);
+      speakText(`Opening ${parsed.tab === 'login' ? 'login' : 'sign up'} window.`);
+      return { handled: true, success: true, feedback: '🔑 Opening Auth...' };
+    }
+
+    // Pass through other commands (SWITCH_THEME, AI_QUERY, etc.)
+    return onGlobalVoiceAction?.(parsed);
+  };
+
+
   // Interactive Sandbox States
   const [presetIndex, setPresetIndex] = useState(0);
   const [isSimPlaying, setIsSimPlaying] = useState(true);
@@ -372,7 +474,7 @@ export default function ConnectPage({
             </button>
           )}
 
-          <VoiceAssistant onGlobalVoiceAction={onGlobalVoiceAction} theme={theme} showLabel={false} />
+          <VoiceAssistant onGlobalVoiceAction={handleConnectPageVoiceAction} theme={theme} showLabel={false} />
 
           {userAccount ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

@@ -92,57 +92,105 @@ export default function App() {
       const newTheme = parsed.theme === 'toggle' ? (theme === 'dark' ? 'light' : 'dark') : parsed.theme;
       setTheme(newTheme);
       speakText(`Switched to ${newTheme} theme!`);
-    } else if (parsed.action === 'NAVIGATE') {
-      setPage(parsed.page);
-      const pageNames = { chat: 'Messenger Chat', cinema: '4K Cinema Player', home: 'Home Hub', ai: 'ViAM AI Companion', profile: 'User Profile' };
-      speakText(`Opening ${pageNames[parsed.page] || parsed.page}`);
-    } else if (parsed.action === 'SEARCH_AND_PLAY') {
-      speakText(`Searching and playing ${parsed.query} now.`);
-      setPage('cinema');
+      return { handled: true, success: true, feedback: `🎨 Switched to ${newTheme} theme!` };
+    }
 
-      try {
-        const isAnime = /anime|naruto|doraemon|solo leveling|one piece|dragon ball|pokemon|beyblade|jujutsu|bleach|attack on titan/i.test(parsed.query);
-        const endpoint = isAnime
-          ? `${SERVER_URL}/api/search/watchanimeworld/resolve?title=${encodeURIComponent(parsed.query)}`
-          : `${SERVER_URL}/api/search/all?q=${encodeURIComponent(parsed.query)}`;
+    if (parsed.action === 'NAVIGATE' || parsed.action === 'SEARCH_AND_PLAY') {
+      const savedAccountStr = localStorage.getItem('cypr_user_account');
+      let savedAccount = null;
+      try { savedAccount = savedAccountStr ? JSON.parse(savedAccountStr) : null; } catch {}
+      const isLoggedIn = Boolean(savedAccount && (savedAccount.email || savedAccount.name));
+      const activeRoom = (roomId || sessionStorage.getItem('cypr_active_room') || '').trim();
 
-        const res = await fetch(endpoint);
-        const data = await res.json();
+      // 1. Guest user check: "agr user guest user h to Login and signup ko bole"
+      if (!isLoggedIn) {
+        const msg = "Please log in or sign up first to access this page.";
+        speakText(msg);
+        return {
+          handled: true,
+          success: false,
+          feedback: "🔒 Pehle Login ya Signup karein! (Please Log In / Sign Up)"
+        };
+      }
 
-        if (isAnime && data.servers && data.servers.length > 0) {
-          const newMedia = {
-            sourceType: 'embed',
-            url: data.activeUrl || data.servers[0].url,
-            title: data.title || parsed.query,
-            servers: data.servers,
-            isPlaying: true
-          };
-          setMediaState(newMedia);
-          if (socket) socket.emit('change-media', newMedia);
-        } else if (data.movies && data.movies.length > 0) {
-          const top = data.movies[0];
-          const newMedia = {
-            sourceType: top.type || 'embed',
-            url: top.url,
-            title: top.title,
-            servers: top.servers,
-            isPlaying: true
-          };
-          setMediaState(newMedia);
-          if (socket) socket.emit('change-media', newMedia);
-        } else if (data.youtube && data.youtube.length > 0) {
-          const yt = data.youtube[0];
-          const newMedia = {
-            sourceType: 'youtube',
-            url: yt.url,
-            title: yt.title,
-            isPlaying: true
-          };
-          setMediaState(newMedia);
-          if (socket) socket.emit('change-media', newMedia);
+      // If user is logged in and asks for personal profile
+      if (parsed.action === 'NAVIGATE' && parsed.page === 'profile') {
+        const msg = "Opening User Profile";
+        speakText(msg);
+        setPage('profile');
+        return { handled: true, success: true, feedback: `👤 ${msg}` };
+      }
+
+      // 2. User logged in, but room not created/joined: "agr user login h aur room nhi banaya to room banane ko bole"
+      if (!activeRoom) {
+        const msg = "Please create or join a room first to access this page.";
+        speakText(msg);
+        return {
+          handled: true,
+          success: false,
+          feedback: "🚪 Kripya pehle room banayein! (Please create a room first)"
+        };
+      }
+
+      // 3. User logged in AND room created: "agr login bhi h room bhi created h to redirect kr do!!"
+      if (parsed.action === 'NAVIGATE') {
+        setPage(parsed.page);
+        const pageNames = { chat: 'Messenger Chat', cinema: '4K Cinema Player', home: 'Home Hub', ai: 'ViAM AI Companion', profile: 'User Profile', rooms: 'Rooms Management' };
+        const msg = `Opening ${pageNames[parsed.page] || parsed.page}`;
+        speakText(msg);
+        return { handled: true, success: true, feedback: `🚀 ${msg}` };
+      }
+
+      if (parsed.action === 'SEARCH_AND_PLAY') {
+        speakText(`Searching and playing ${parsed.query} now.`);
+        setPage('cinema');
+
+        try {
+          const isAnime = /anime|naruto|doraemon|solo leveling|one piece|dragon ball|pokemon|beyblade|jujutsu|bleach|attack on titan/i.test(parsed.query);
+          const endpoint = isAnime
+            ? `${SERVER_URL}/api/search/watchanimeworld/resolve?title=${encodeURIComponent(parsed.query)}`
+            : `${SERVER_URL}/api/search/all?q=${encodeURIComponent(parsed.query)}`;
+
+          const res = await fetch(endpoint);
+          const data = await res.json();
+
+          if (isAnime && data.servers && data.servers.length > 0) {
+            const newMedia = {
+              sourceType: 'embed',
+              url: data.activeUrl || data.servers[0].url,
+              title: data.title || parsed.query,
+              servers: data.servers,
+              isPlaying: true
+            };
+            setMediaState(newMedia);
+            if (socket) socket.emit('change-media', newMedia);
+          } else if (data.movies && data.movies.length > 0) {
+            const top = data.movies[0];
+            const newMedia = {
+              sourceType: top.type || 'embed',
+              url: top.url,
+              title: top.title,
+              servers: top.servers,
+              isPlaying: true
+            };
+            setMediaState(newMedia);
+            if (socket) socket.emit('change-media', newMedia);
+          } else if (data.youtube && data.youtube.length > 0) {
+            const yt = data.youtube[0];
+            const newMedia = {
+              sourceType: 'youtube',
+              url: yt.url,
+              title: yt.title,
+              isPlaying: true
+            };
+            setMediaState(newMedia);
+            if (socket) socket.emit('change-media', newMedia);
+          }
+        } catch (err) {
+          console.error('[Voice Play Error]', err);
         }
-      } catch (err) {
-        console.error('[Voice Play Error]', err);
+
+        return { handled: true, success: true, feedback: `🎬 Playing ${parsed.query}...` };
       }
     } else if (parsed.action === 'AI_QUERY') {
       try {
