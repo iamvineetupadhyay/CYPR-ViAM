@@ -87,7 +87,10 @@ async function sendEmailOtp(toEmail, otpCode) {
   // 1. Try Brevo REST API (300 free emails/day to ANY email address over HTTPS Port 443)
   if (process.env.BREVO_API_KEY) {
     try {
-      const senderEmail = process.env.BREVO_SENDER || process.env.SMTP_USER || 'mail.cyprtech@gmail.com';
+      let senderEmail = process.env.BREVO_SENDER || process.env.SMTP_USER || 'mail.cyprtech@gmail.com';
+      const emailMatch = senderEmail.match(/<([^>]+)>/);
+      senderEmail = emailMatch ? emailMatch[1].trim() : senderEmail.replace(/["'\s]/g, '').trim();
+      if (!senderEmail || !senderEmail.includes('@')) senderEmail = 'mail.cyprtech@gmail.com';
       const res = await fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
         headers: {
