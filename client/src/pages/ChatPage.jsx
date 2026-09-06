@@ -329,16 +329,6 @@ export default function ChatPage({
         </div>
       ))}
 
-      {/* Incoming call notification */}
-      {incomingCall && (
-        <IncomingCallBanner
-          partnerName={incomingCall.fromName || 'Room Member'}
-          isVideoCall={incomingCall.isVideo}
-          onAccept={acceptIncoming}
-          onDecline={declineIncoming}
-        />
-      )}
-
       {/* ═══════ LEFT PANEL: WHATSAPP-STYLE CHATS SIDEBAR ═══════ */}
       <aside
         className={`chat-page-sidebar ${showMobileChat ? 'mobile-hidden' : ''}`}
